@@ -3,47 +3,185 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Models\Certificate;
+use App\Models\Course;
+use App\Models\Enrollment;
+use App\Models\Lesson;
+use App\Models\LessonCompletion;
+use App\Models\Quiz;
+use App\Models\QuizAttempt;
 use Illuminate\Http\Request;
+use Illuminate\Support\Str;
 
 class CertificateController extends Controller
 {
-    /**
-     * Display a listing of the resource.
-     */
-    public function index()
+    public function index(Request $request)
     {
-        //
+        $query = Certificate::query()
+            ->where('UserId', (int) $request->user()->id);
+
+        if ($request->filled('CourseId')) {
+            $query->where('CourseId', (int) $request->input('CourseId'));
+        }
+
+        $certificates = $query
+            ->orderByDesc('GeneratedAt')
+            ->orderByDesc('Id')
+            ->paginate((int) $request->input('per_page', 15));
+
+        return response()->json($certificates);
     }
 
     /**
-     * Store a newly created resource in storage.
+     * Generate certificate for a course (real logic).
+     *
+     * POST /api/certificates
+     * Body: { "CourseId": 1 }
      */
     public function store(Request $request)
     {
-        //
+        $data = $request->validate([
+            'CourseId' => ['required', 'integer', 'exists:courses,Id'],
+        ]);
+
+        $userId = (int) $request->user()->id;
+        $courseId = (int) $data['CourseId'];
+
+        // Prevent duplicates
+        $existing = Certificate::where('CourseId', $courseId)
+            ->where('UserId', $userId)
+            ->first();
+
+        if ($existing) {
+            return response()->json([
+                'message' => 'Certificate already exists for this course.',
+                'data' => $existing,
+            ], 409);
+        }
+
+        // 1) Must be enrolled
+        $enrolled = Enrollment::where('CourseId', $courseId)
+            ->where('UserId', $userId)
+            ->exists();
+
+        if (!$enrolled) {
+            return response()->json([
+                'message' => 'You must be enrolled in this course to generate a certificate.'
+            ], 422);
+        }
+
+        // 2) Must complete all lessons (if course has lessons)
+        $totalLessons = Lesson::where('CourseId', $courseId)->count();
+
+        if ($totalLessons > 0) {
+            $completedLessons = LessonCompletion::query()
+                ->join('lessons', 'lessons.Id', '=', 'lesson_completions.LessonId')
+                ->where('lessons.CourseId', $courseId)
+                ->where('lesson_completions.UserId', $userId)
+                ->distinct('lesson_completions.LessonId')
+                ->count('lesson_completions.LessonId');
+
+            if ($completedLessons < $totalLessons) {
+                return response()->json([
+                    'message' => 'You must complete all lessons in this course before generating a certificate.',
+                    'data' => [
+                        'TotalLessons' => $totalLessons,
+                        'CompletedLessons' => $completedLessons,
+                        'RemainingLessons' => $totalLessons - $completedLessons,
+                    ]
+                ], 422);
+            }
+        }
+
+        // 3) Must pass at least one quiz attempt (if course has quizzes)
+        $totalQuizzes = Quiz::where('CourseId', $courseId)->count();
+
+        if ($totalQuizzes > 0) {
+            $passedAny = QuizAttempt::query()
+                ->join('quizzes', 'quizzes.Id', '=', 'quiz_attempts.QuizId')
+                ->where('quizzes.CourseId', $courseId)
+                ->where('quiz_attempts.UserId', $userId)
+                ->where('quiz_attempts.IsPassed', true)
+                ->exists();
+
+            if (!$passedAny) {
+                return response()->json([
+                    'message' => 'You must pass at least one quiz in this course before generating a certificate.'
+                ], 422);
+            }
+        }
+
+        // Generate
+        $certificate = Certificate::create([
+            'CourseId' => $courseId,
+            'UserId' => $userId,
+            'DownloadUrl' => null, // set later if you implement PDF generation
+            'VerificationCode' => Str::upper(Str::random(12)),
+            'GeneratedAt' => now(),
+        ]);
+
+        return response()->json([
+            'message' => 'Certificate generated successfully.',
+            'data' => $certificate,
+        ], 201);
     }
 
-    /**
-     * Display the specified resource.
-     */
-    public function show(string $id)
+    public function show(Request $request, string $id)
     {
-        //
+        $certificate = Certificate::find($id);
+
+        if (!$certificate) {
+            return response()->json(['message' => 'Certificate not found.'], 404);
+        }
+
+        if ((int) $certificate->UserId !== (int) $request->user()->id) {
+            return response()->json(['message' => 'Forbidden.'], 403);
+        }
+
+        return response()->json(['data' => $certificate]);
     }
 
-    /**
-     * Update the specified resource in storage.
-     */
     public function update(Request $request, string $id)
     {
-        //
+        // In a real system, users should not update certificates.
+        // Keeping minimal functionality: allow setting DownloadUrl only.
+        $certificate = Certificate::find($id);
+
+        if (!$certificate) {
+            return response()->json(['message' => 'Certificate not found.'], 404);
+        }
+
+        if ((int) $certificate->UserId !== (int) $request->user()->id) {
+            return response()->json(['message' => 'Forbidden.'], 403);
+        }
+
+        $data = $request->validate([
+            'DownloadUrl' => ['nullable', 'string', 'max:255'],
+        ]);
+
+        $certificate->fill($data);
+        $certificate->save();
+
+        return response()->json([
+            'message' => 'Certificate updated successfully.',
+            'data' => $certificate,
+        ]);
     }
 
-    /**
-     * Remove the specified resource from storage.
-     */
-    public function destroy(string $id)
+    public function destroy(Request $request, string $id)
     {
-        //
+        $certificate = Certificate::find($id);
+
+        if (!$certificate) {
+            return response()->json(['message' => 'Certificate not found.'], 404);
+        }
+
+        if ((int) $certificate->UserId !== (int) $request->user()->id) {
+            return response()->json(['message' => 'Forbidden.'], 403);
+        }
+
+        $certificate->delete();
+
+        return response()->json(['message' => 'Certificate deleted successfully.']);
     }
 }

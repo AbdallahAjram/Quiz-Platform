@@ -36,5 +36,5 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::apiResource('answer-options', AnswerOptionController::class);
     Route::apiResource('quiz-attempts', QuizAttemptController::class);
     Route::apiResource('quiz-attempt-answers', QuizAttemptAnswerController::class);
-
+    Route::post('quiz-attempts/{id}/submit', [QuizAttemptController::class, 'submit']);
 });

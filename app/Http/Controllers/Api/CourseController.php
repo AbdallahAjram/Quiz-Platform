@@ -11,7 +11,7 @@ class CourseController extends Controller
     public function index()
     {
         return Course::query()
-            ->orderByDesc('id')
+            ->orderByDesc('Id')
             ->get();
     }
 
@@ -34,7 +34,7 @@ class CourseController extends Controller
 
     public function show(Course $course)
     {
-        return $course;
+        return response()->json($course);
     }
 
     public function update(Request $request, Course $course)
@@ -51,7 +51,7 @@ class CourseController extends Controller
 
         $course->update($data);
 
-        return $course;
+        return response()->json($course);
     }
 
     public function destroy(Course $course)
