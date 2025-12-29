@@ -49,6 +49,8 @@ class LessonController extends Controller
             'Order' => ['required', 'integer', 'min:0'],
         ]);
 
+        $validated['CreatedBy'] = auth()->id();
+
         $lesson = Lesson::create($validated);
 
         return response()->json([

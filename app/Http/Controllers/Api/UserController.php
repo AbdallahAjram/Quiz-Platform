@@ -17,18 +17,18 @@ class UserController extends Controller
     public function store(Request $request)
     {
         $data = $request->validate([
-            'full_name' => ['required', 'string', 'max:255'],
+            'name' => ['required', 'string', 'max:255'],
             'email' => ['required', 'email', 'unique:users,email'],
             'password' => ['required', 'string', 'min:6'],
-            'role' => ['required', 'string'],
+            'Role' => ['required', 'string'],
             'is_active' => ['nullable', 'boolean'],
         ]);
 
         $user = User::create([
-            'full_name' => $data['full_name'],
+            'name' => $data['name'],
             'email' => $data['email'],
-            'hashed_password' => Hash::make($data['password']),
-            'role' => $data['role'],
+            'password' => Hash::make($data['password']),
+            'Role' => $data['Role'],
             'is_active' => $data['is_active'] ?? null,
         ]);
 
@@ -43,16 +43,15 @@ class UserController extends Controller
     public function update(Request $request, User $user)
     {
         $data = $request->validate([
-            'full_name' => ['sometimes', 'string', 'max:255'],
+            'name' => ['sometimes', 'string', 'max:255'],
             'email' => ['sometimes', 'email', 'unique:users,email,' . $user->id],
             'password' => ['nullable', 'string', 'min:6'],
-            'role' => ['sometimes', 'string'],
+            'Role' => ['sometimes', 'string'],
             'is_active' => ['nullable', 'boolean'],
         ]);
 
         if (!empty($data['password'] ?? null)) {
-            $data['hashed_password'] = Hash::make($data['password']);
-            unset($data['password']);
+            $data['password'] = Hash::make($data['password']);
         }
 
         $user->update($data);

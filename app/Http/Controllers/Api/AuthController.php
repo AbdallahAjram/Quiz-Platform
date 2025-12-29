@@ -13,18 +13,18 @@ class AuthController extends Controller
     public function register(Request $request)
     {
         $data = $request->validate([
-            'full_name' => ['required','string','max:255'],
+            'name' => ['required','string','max:255'], // Changed from full_name
             'email' => ['required','email','unique:users,email'],
             'password' => ['required','string','min:6'],
-            'role' => ['required','string'],
+            'Role' => ['required','string'], // Changed from role
             'is_active' => ['nullable','boolean'],
         ]);
 
         $user = User::create([
-            'full_name' => $data['full_name'],
+            'name' => $data['name'], // Changed from full_name
             'email' => $data['email'],
-            'hashed_password' => Hash::make($data['password']),
-            'role' => $data['role'],
+            'password' => Hash::make($data['password']), // Changed from hashed_password
+            'Role' => $data['Role'], // Changed from role
             'is_active' => $data['is_active'] ?? true,
         ]);
 
@@ -45,7 +45,7 @@ class AuthController extends Controller
 
         $user = User::where('email', $data['email'])->first();
 
-        if (!$user || !Hash::check($data['password'], $user->hashed_password)) {
+        if (!$user || !Hash::check($data['password'], $user->password)) { // Changed from hashed_password
             throw ValidationException::withMessages([
                 'email' => ['Invalid credentials.'],
             ]);
@@ -56,6 +56,7 @@ class AuthController extends Controller
         return response()->json([
             'user' => $user,
             'token' => $token,
+            'Role' => $user->Role, // Changed from role
         ]);
     }
 

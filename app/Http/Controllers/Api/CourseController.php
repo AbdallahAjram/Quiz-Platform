@@ -27,6 +27,8 @@ class CourseController extends Controller
             'EstimatedDuration' => ['nullable', 'integer', 'min:1'],
         ]);
 
+        $data['CreatedBy'] = auth()->id();
+
         $course = Course::create($data);
 
         return response()->json($course, 201);
