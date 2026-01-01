@@ -1,6 +1,7 @@
 
 import React from 'react';
-import { BookOpen, Zap, BarChart } from 'lucide-react';
+import { BookOpen, Zap, BarChart, Plus } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 
 const CourseCard = ({ title, description, category, difficulty, progress }: { title: string, description: string, category: string, difficulty: string, progress: number }) => {
     const difficultyColor = {
@@ -45,6 +46,7 @@ const CourseCard = ({ title, description, category, difficulty, progress }: { ti
 
 
 const MyCourses = () => {
+    const navigate = useNavigate();
     const courses = [
         { title: "Web Development Basics", description: "An introduction to HTML, CSS, and JavaScript.", category: "Web Development", difficulty: "Beginner", progress: 75 },
         { title: "Advanced Laravel Patterns", description: "Master design patterns in Laravel for scalable apps.", category: "Backend Development", difficulty: "Advanced", progress: 40 },
@@ -53,7 +55,16 @@ const MyCourses = () => {
 
     return (
         <div>
-            <h2 className="text-3xl font-bold text-gray-800 mb-6">My Courses</h2>
+            <div className="flex justify-between items-center mb-6">
+                <h2 className="text-2xl font-bold text-gray-900">Courses</h2>
+                <button
+                    onClick={() => navigate('/management/courses/create')}
+                    className="flex items-center px-4 py-2 font-semibold text-white bg-blue-600 rounded-lg hover:bg-blue-700 transition-colors duration-300"
+                >
+                    <Plus className="w-5 h-5 mr-2" />
+                    Create New Course
+                </button>
+            </div>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
                 {courses.map(course => <CourseCard key={course.title} {...course} />)}
             </div>

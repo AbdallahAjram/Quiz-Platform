@@ -25,9 +25,18 @@ class CourseController extends Controller
             'Difficulty' => ['nullable', 'string', 'max:255'],
             'Thumbnail' => ['nullable', 'string', 'max:255'],
             'EstimatedDuration' => ['nullable', 'integer', 'min:1'],
+            'CreatedBy' => ['nullable', 'integer', 'exists:users,id'],
         ]);
 
-        $data['CreatedBy'] = auth()->id();
+        $user = auth()->user();
+
+        if ($user->Role === 'Admin' && !empty($data['CreatedBy'])) {
+            // Admin is assigning to an instructor
+        } else {
+            $data['CreatedBy'] = $user->id;
+        }
+
+        $data['IsPublished'] = false; // Set IsPublished to false by default
 
         $course = Course::create($data);
 
