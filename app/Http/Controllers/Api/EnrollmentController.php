@@ -39,17 +39,15 @@ class EnrollmentController extends Controller
     public function store(Request $request)
     {
         $validated = $request->validate([
-            // courses PK is "Id"
-            'CourseId' => ['required', 'integer', 'exists:courses,Id'],
+    'CourseId' => ['required', 'integer', 'exists:courses,id'],
+    'Status' => ['nullable', 'string', 'max:50'],
+    'EnrolledAt' => ['nullable', 'date'],
+]);
 
-            // optional: allow enrolling a specific user (admin use). If not provided, use current user.
-            'UserId' => ['nullable', 'integer', 'exists:users,id'],
 
-            'Status' => ['nullable', 'string', 'max:50'],
-            'EnrolledAt' => ['nullable', 'date'],
-        ]);
 
-        $userId = $validated['UserId'] ?? $request->user()->id;
+        $userId = $request->user()->id;
+
 
         // Idempotent: prevent duplicates (you also have a DB unique constraint)
         $existing = Enrollment::where('UserId', $userId)
@@ -145,4 +143,5 @@ class EnrollmentController extends Controller
 
         return response()->json(['message' => 'Enrollment deleted successfully.']);
     }
+   
 }

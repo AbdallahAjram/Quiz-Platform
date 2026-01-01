@@ -11,11 +11,9 @@ return new class extends Migration
         Schema::create('enrollments', function (Blueprint $table) {
             $table->bigIncrements('Id');
 
-            // Users table uses default Laravel PK: id (lowercase)
-            $table->unsignedBigInteger('UserId');
-
-            // Courses table uses PascalCase PK: Id (as you implemented)
-            $table->unsignedBigInteger('CourseId');
+            $table->unsignedBigInteger('UserId')->index();
+            $table->unsignedBigInteger('CourseId')->index();
+ 
 
             $table->timestamp('EnrolledAt')->useCurrent();
             $table->string('Status')->default('active');

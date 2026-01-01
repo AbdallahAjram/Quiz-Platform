@@ -52,4 +52,7 @@ class Quiz extends Model
     {
         return $this->hasMany(Question::class, 'QuizId', 'Id');
     }
+    public function attempts() {
+    return $this->hasMany(QuizAttempt::class, 'QuizId', 'Id');
+}
 }

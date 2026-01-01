@@ -47,7 +47,7 @@ class Lesson extends Model
      */
     public function createdBy(): BelongsTo
     {
-        return $this->belongsTo(User::class, 'CreatedBy');
+        return $this->belongsTo(User::class, 'CreatedBy', 'id');
     }
 
     /**
@@ -55,7 +55,8 @@ class Lesson extends Model
      */
     public function completions(): HasMany
     {
-        return $this->hasMany(LessonCompletion::class, 'LessonId');
+        // lesson_completions.LessonId -> lessons.Id
+        return $this->hasMany(LessonCompletion::class, 'LessonId', 'Id');
     }
 
     /**
@@ -63,6 +64,7 @@ class Lesson extends Model
      */
     public function comments(): HasMany
     {
-        return $this->hasMany(Comment::class, 'LessonId');
+        // comments.LessonId -> lessons.Id
+        return $this->hasMany(Comment::class, 'LessonId', 'Id');
     }
 }

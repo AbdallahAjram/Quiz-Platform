@@ -18,21 +18,53 @@ class User extends Authenticatable
      *
      * @var array<int, string>
      */
-    protected $fillable = [
-        'name',
-        'email',
-        'password',
-        'Role',
-        'is_active',
-    ];
+protected $fillable = [
+    'name',
+    'email',
+    'password',
+    'Role',
+    'is_active',
+];
+
+protected $hidden = [
+    'password',
+    'remember_token',
+];
 
     /**
-     * The attributes that should be hidden for serialization.
-     *
-     * @var array<int, string>
+     * NOTE: users table PK is the default Laravel "id" (lowercase).
+     * Many other tables use PascalCase foreign keys like UserId.
      */
-    protected $hidden = [
-        'password',
-        'remember_token',
-    ];
+
+    public function enrollments()
+    {
+        return $this->hasMany(Enrollment::class, 'UserId', 'id');
+    }
+
+    public function lessonCompletions()
+    {
+        return $this->hasMany(LessonCompletion::class, 'UserId', 'id');
+    }
+
+    public function quizAttempts()
+    {
+        return $this->hasMany(QuizAttempt::class, 'UserId', 'id');
+    }
+
+    public function comments()
+    {
+        return $this->hasMany(Comment::class, 'UserId', 'id');
+    }
+
+    public function announcements()
+    {
+        // announcements.CreatedBy -> users.id
+        return $this->hasMany(Announcement::class, 'CreatedBy', 'id');
+    }
+
+    public function certificates()
+    {
+        return $this->hasMany(Certificate::class, 'UserId', 'id');
+    }
+
 }

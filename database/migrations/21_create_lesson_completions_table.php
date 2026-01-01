@@ -11,8 +11,9 @@ return new class extends Migration
         Schema::create('lesson_completions', function (Blueprint $table) {
             $table->bigIncrements('Id');
 
-            $table->unsignedBigInteger('LessonId');
-            $table->unsignedBigInteger('UserId');
+           $table->unsignedBigInteger('LessonId')->index();
+           $table->unsignedBigInteger('UserId')->index();
+
 
             $table->timestamp('CompletedDate')->useCurrent();
 

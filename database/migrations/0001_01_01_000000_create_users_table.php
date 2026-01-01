@@ -17,7 +17,9 @@ return new class extends Migration
     $table->string('email')->unique();
     $table->string('password'); // Changed from hashed_password
     $table->string('Role'); // Changed from role
+    $table->index('Role');
     $table->boolean('is_active')->nullable();
+    $table->index('is_active');
     $table->timestamps();
 });
 

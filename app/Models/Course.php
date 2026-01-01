@@ -38,34 +38,35 @@ class Course extends Model
     ];
 
     /**
-     * Get the user who created the course.
+     * User who created the course (courses.CreatedBy -> users.id).
      */
     public function createdBy(): BelongsTo
     {
-        return $this->belongsTo(User::class, 'CreatedBy');
+        return $this->belongsTo(User::class, 'CreatedBy', 'id');
     }
 
-    /**
-     * Get the lessons for the course.
-     */
-    public function lessons(): HasMany
-    {
-        return $this->hasMany(Lesson::class, 'CourseId');
-    }
+    public function lessons() {
+    return $this->hasMany(Lesson::class, 'CourseId', 'Id');
+}
 
-    /**
-     * Get the quizzes for the course.
-     */
-    public function quizzes(): HasMany
-    {
-        return $this->hasMany(Quiz::class, 'CourseId');
-    }
+public function quizzes() {
+    return $this->hasMany(Quiz::class, 'CourseId', 'Id');
+}
 
-    /**
-     * Get the enrollments for the course.
-     */
-    public function enrollments(): HasMany
-    {
-        return $this->hasMany(Enrollment::class, 'CourseId');
-    }
+public function enrollments() {
+    return $this->hasMany(Enrollment::class, 'CourseId', 'Id');
+}
+
+public function announcements() {
+    return $this->hasMany(Announcement::class, 'CourseId', 'Id');
+}
+
+public function comments() {
+    return $this->hasMany(Comment::class, 'CourseId', 'Id');
+}
+
+public function certificates() {
+    return $this->hasMany(Certificate::class, 'CourseId', 'Id');
+}
+
 }

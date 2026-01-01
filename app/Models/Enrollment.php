@@ -7,11 +7,8 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class Enrollment extends Model
 {
-    protected $table = 'enrollments';
+  protected $table = 'enrollments';
     protected $primaryKey = 'Id';
-
-    public $incrementing = true;
-    protected $keyType = 'int';
 
     const CREATED_AT = 'CreatedAt';
     const UPDATED_AT = 'UpdatedAt';
