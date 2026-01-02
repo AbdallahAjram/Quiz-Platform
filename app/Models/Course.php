@@ -27,6 +27,7 @@ class Course extends Model
         'Thumbnail',
         'EstimatedDuration',
         'CreatedBy',
+        'IsPublished',
     ];
 
     protected $casts = [
@@ -35,6 +36,7 @@ class Course extends Model
         'CreatedAt' => 'datetime',
         'UpdatedAt' => 'datetime',
         'CreatedBy' => 'integer',
+        'IsPublished' => 'boolean',
     ];
 
     /**
