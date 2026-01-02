@@ -38,6 +38,7 @@ const CreateCourse = () => {
         Category: '',
         Difficulty: 'Beginner',
         EstimatedDuration: 60,
+        IsPublished: false,
         CreatedBy: user.Role === 'Admin' ? '' : user.id,
     });
 
@@ -103,7 +104,10 @@ const CreateCourse = () => {
                         <option>Intermediate</option>
                         <option>Advanced</option>
                     </select>
-                    <input type="number" name="EstimatedDuration" value={course.EstimatedDuration} onChange={handleChange} placeholder="Estimated Duration (Minutes)" className="p-2 border rounded" />
+                    <div className="flex flex-col">
+                        <label htmlFor="estimatedDuration" className="text-sm font-medium text-gray-700">Estimated Duration (Minutes)</label>
+                        <input type="number" id="estimatedDuration" name="EstimatedDuration" value={course.EstimatedDuration} onChange={handleChange} className="p-2 border rounded" />
+                    </div>
                 </div>
                 <textarea name="ShortDescription" value={course.ShortDescription} onChange={handleChange} placeholder="Short Description" className="w-full p-2 border rounded" />
                 <textarea name="LongDescription" value={course.LongDescription} onChange={handleChange} placeholder="Long Description" rows={5} className="w-full p-2 border rounded" />

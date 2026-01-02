@@ -10,24 +10,35 @@ class QuizAttemptController extends Controller
 {
     public function index(Request $request)
     {
-        // Optional filters:
-        // ?QuizId=1
-        // ?UserId=1 (admin/debug only; otherwise it’s current user)
+        $user = $request->user();
         $query = QuizAttempt::query();
+
+        if ($user->Role === 'Student') {
+            $query->where('UserId', $user->id);
+        } elseif ($user->Role === 'Instructor') {
+            $instructorId = $user->id;
+            $query->whereHas('quiz.course', function ($q) use ($instructorId) {
+                $q->where('CreatedBy', $instructorId);
+            });
+
+            // Allow instructor to filter by a specific student within their courses
+            if ($request->filled('UserId')) {
+                // Extra check: is this student enrolled in one of my courses? (optional but good)
+                $query->where('UserId', (int) $request->input('UserId'));
+            }
+        }
+        // Admin has no restrictions by default
 
         if ($request->filled('QuizId')) {
             $query->where('QuizId', (int) $request->input('QuizId'));
         }
 
-        // If you want to restrict to current user always, remove this block.
-        if ($request->filled('UserId')) {
+        if ($user->Role === 'Admin' && $request->filled('UserId')) {
             $query->where('UserId', (int) $request->input('UserId'));
-        } else {
-            // Default: current user only
-            $query->where('UserId', (int) $request->user()->id);
         }
 
         $attempts = $query
+            ->with(['user:id,name', 'quiz:Id,Title']) // Eager load relationships
             ->orderByDesc('AttemptDate')
             ->orderByDesc('Id')
             ->paginate((int) $request->input('per_page', 15));

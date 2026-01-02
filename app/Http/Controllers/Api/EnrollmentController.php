@@ -11,11 +11,18 @@ class EnrollmentController extends Controller
 {
     public function index(Request $request)
     {
-        // Optional filters:
-        // ?UserId=1
-        // ?CourseId=2
-        // ?Status=active
+        $user = $request->user();
         $query = Enrollment::query();
+
+        if ($user->Role === 'Student') {
+            $query->where('UserId', $user->id);
+        } elseif ($user->Role === 'Instructor') {
+            $instructorId = $user->id;
+            $query->whereHas('course', function ($q) use ($instructorId) {
+                $q->where('CreatedBy', $instructorId);
+            });
+        }
+        // Admin has no restrictions
 
         if ($request->filled('UserId')) {
             $query->where('UserId', (int) $request->input('UserId'));
@@ -30,6 +37,7 @@ class EnrollmentController extends Controller
         }
 
         $enrollments = $query
+            ->with(['user:id,name', 'course:Id,Title'])
             ->orderByDesc('EnrolledAt')
             ->paginate((int) $request->input('per_page', 15));
 

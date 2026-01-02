@@ -36,7 +36,14 @@ const Login = () => {
                 localStorage.setItem('user', JSON.stringify(response.data.user));
                 setSuccess('Login successful! Redirecting to dashboard...');
                 setTimeout(() => {
-                    navigate('/dashboard');
+                    const user = response.data.user;
+                    if (user.Role === 'Student') {
+                        navigate('/student/dashboard');
+                    } else if (user.Role === 'Instructor' || user.Role === 'Admin') {
+                        navigate('/management/dashboard');
+                    } else {
+                        navigate('/dashboard'); // Fallback
+                    }
                 }, 2000);
             } else {
                  setError('Login failed. Please check your credentials.');

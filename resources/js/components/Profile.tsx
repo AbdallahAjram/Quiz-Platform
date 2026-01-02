@@ -35,7 +35,7 @@ const Profile = () => {
     return (
         <div className="bg-white rounded-lg shadow-lg max-w-2xl mx-auto">
             <div className="p-6 border-b-2 border-blue-500">
-                <h2 className="text-3xl font-bold text-gray-800 text-center">My Profile</h2>
+                <h2 className="text-2xl font-bold text-gray-900 text-center">My Profile</h2>
             </div>
             <div className="p-4">
                 <DetailItem icon={<User className="w-6 h-6" />} label="Full Name" value={user.name} />

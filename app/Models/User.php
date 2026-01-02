@@ -23,7 +23,9 @@ protected $fillable = [
     'email',
     'password',
     'Role',
-    'is_active',
+    'Status',
+    'ApprovedBy',
+    'ApprovedAt',
 ];
 
 protected $hidden = [
