@@ -12,8 +12,17 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('courses', function (Blueprint $table) {
-            $table->unsignedBigInteger('CreatedBy')->nullable()->after('id');
+            // courses primary key is "Id" (PascalCase)
+            $table->unsignedBigInteger('CreatedBy')->nullable()->after('Id');
             $table->foreign('CreatedBy')->references('id')->on('users')->onDelete('set null');
+            $table->index('CreatedBy');
+        });
+
+        Schema::table('lessons', function (Blueprint $table) {
+            // lessons primary key is "Id" (PascalCase)
+            $table->unsignedBigInteger('CreatedBy')->nullable()->after('Id');
+            $table->foreign('CreatedBy')->references('id')->on('users')->onDelete('set null');
+            $table->index('CreatedBy');
         });
     }
 
@@ -23,6 +32,11 @@ return new class extends Migration
     public function down(): void
     {
         Schema::table('courses', function (Blueprint $table) {
+            $table->dropForeign(['CreatedBy']);
+            $table->dropColumn('CreatedBy');
+        });
+
+        Schema::table('lessons', function (Blueprint $table) {
             $table->dropForeign(['CreatedBy']);
             $table->dropColumn('CreatedBy');
         });

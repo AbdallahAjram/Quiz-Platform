@@ -39,19 +39,10 @@ const Signup = () => {
             });
 
             if (response.status === 200 || response.status === 201) {
-                // Custom logic for instructor role
-                if (Role === 'Instructor') {
-                    setSuccess('Your registration request has been sent to the Administrator. You will be able to log in once your account is approved.');
-                    // Clear form fields
-                    setName('');
-                    setEmail('');
-                    setPassword('');
-                } else {
-                    setSuccess('Success! Redirecting to login...');
-                    setTimeout(() => {
-                        navigate('/login');
-                    }, 2000);
-                }
+                setSuccess('Success! Redirecting to login...');
+                setTimeout(() => {
+                    navigate('/login');
+                }, 2000);
             }
         } catch (err: any) {
             if (err.response && err.response.data && err.response.data.message) {
@@ -134,6 +125,7 @@ const Signup = () => {
                         >
                             <option value="Student">Student</option>
                             <option value="Instructor">Instructor</option>
+                            <option value="Admin">Admin</option>
                         </select>
                     </div>
 

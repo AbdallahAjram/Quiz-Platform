@@ -12,19 +12,16 @@ return new class extends Migration
     public function up(): void
     {
       Schema::create('users', function (Blueprint $table) {
-            $table->id();
-            $table->string('name');
-            $table->string('email')->unique();
-            $table->string('password');
-            $table->string('Role')->default('Student');
-            $table->string('Status')->default('Active'); // e.g., Active, Pending, Inactive
-            $table->foreignId('ApprovedBy')->nullable()->constrained('users')->onDelete('set null');
-            $table->timestamp('ApprovedAt')->nullable();
-            $table->timestamps(); // CreatedAt and UpdatedAt
-
-            $table->index('Role');
-            $table->index('Status');
-      });
+    $table->id(); // Id
+    $table->string('name'); // Changed from full_name
+    $table->string('email')->unique();
+    $table->string('password'); // Changed from hashed_password
+    $table->string('Role'); // Changed from role
+    $table->index('Role');
+    $table->boolean('is_active')->nullable();
+    $table->index('is_active');
+    $table->timestamps();
+});
 
 
         Schema::create('password_reset_tokens', function (Blueprint $table) {
