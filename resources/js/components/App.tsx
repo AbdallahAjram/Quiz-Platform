@@ -7,6 +7,9 @@ import Dashboard from './Dashboard';
 import MyCourses from './MyCourses';
 import Profile from './Profile';
 import DashboardHome from './DashboardHome';
+import ManagementLayout from './ManagementLayout';
+import UserManagement from './UserManagement';
+import ManagementDashboard from './ManagementDashboard';
 
 const ProtectedRoute = ({ children }: { children: JSX.Element }) => {
     const token = localStorage.getItem('token');
@@ -33,6 +36,18 @@ const App = () => {
                     <Route index element={<DashboardHome />} />
                     <Route path="courses" element={<MyCourses />} />
                     <Route path="profile" element={<Profile />} />
+                </Route>
+                <Route
+                    path="/management"
+                    element={
+                        <ProtectedRoute>
+                            <ManagementLayout />
+                        </ProtectedRoute>
+                    }
+                >
+                    <Route index element={<ManagementDashboard />} />
+                    <Route path="dashboard" element={<ManagementDashboard />} />
+                    <Route path="users" element={<UserManagement />} />
                 </Route>
                 <Route path="*" element={<Navigate to="/login" />} />
             </Routes>

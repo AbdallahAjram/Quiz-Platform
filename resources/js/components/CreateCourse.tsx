@@ -38,7 +38,7 @@ const CreateCourse = () => {
         Category: '',
         Difficulty: 'Beginner',
         EstimatedDuration: 60,
-        CreatedBy: user.Role === 'Admin' ? '' : user.id,
+        CreatedBy: user.Role === 'Admin' ? '' : user.Id,
     });
 
     useEffect(() => {
@@ -112,7 +112,7 @@ const CreateCourse = () => {
                     <select name="CreatedBy" value={course.CreatedBy} onChange={handleChange} className="p-2 border rounded w-full">
                         <option value="">Assign to me (Admin)</option>
                         {instructors.map(inst => (
-                            <option key={inst.id} value={inst.id}>{inst.name}</option>
+                            <option key={inst.Id} value={inst.Id}>{inst.Name}</option>
                         ))}
                     </select>
                 )}

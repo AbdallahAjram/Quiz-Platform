@@ -12,24 +12,23 @@ class User extends Authenticatable
     use HasApiTokens, HasFactory, Notifiable;
 
     protected $table = 'users';
+    protected $primaryKey = 'Id';
+    public $timestamps = true;
+    const CREATED_AT = 'CreatedAt';
+    const UPDATED_AT = 'UpdatedAt';
 
-    /**
-     * The attributes that are mass assignable.
-     *
-     * @var array<int, string>
-     */
-protected $fillable = [
-    'name',
-    'email',
-    'password',
-    'Role',
-    'is_active',
-];
+    protected $fillable = [
+        'Name',
+        'Email',
+        'Password',
+        'Role',
+        'IsActive',
+    ];
 
-protected $hidden = [
-    'password',
-    'remember_token',
-];
+    protected $hidden = [
+        'Password',
+        'RememberToken',
+    ];
 
     /**
      * NOTE: users table PK is the default Laravel "id" (lowercase).

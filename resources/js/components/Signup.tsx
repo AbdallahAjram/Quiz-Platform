@@ -28,9 +28,9 @@ const Signup = () => {
 
         try {
             const response = await axios.post('http://127.0.0.1:8000/api/auth/register', {
-                name: name,
-                email,
-                password,
+                Name: name,
+                Email: email,
+                Password: password,
                 Role,
             }, {
                 headers: {
@@ -125,7 +125,6 @@ const Signup = () => {
                         >
                             <option value="Student">Student</option>
                             <option value="Instructor">Instructor</option>
-                            <option value="Admin">Admin</option>
                         </select>
                     </div>
 

@@ -32,7 +32,7 @@ return new class extends Migration
 
             // FK to users: users PK is "id" (lowercase)
             $table->foreign('UserId')
-                ->references('id')
+                ->references('Id')
                 ->on('users')
                 ->onDelete('cascade');
         });

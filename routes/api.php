@@ -16,7 +16,8 @@ use App\Http\Controllers\Api\{
     QuestionController,
     AnswerOptionController,
     QuizAttemptController,
-    QuizAttemptAnswerController
+    QuizAttemptAnswerController,
+    AdminController
 };
 
 // Health check
@@ -33,8 +34,15 @@ Route::middleware('auth:sanctum')->group(function () {
 
     Route::post('auth/logout', [AuthController::class, 'logout']);
 
+    // Admin-only routes
+    Route::middleware('role:Admin')->group(function () {
+        Route::post('admin/instructors', [AdminController::class, 'createInstructor']);
+        Route::patch('admin/users/{Id}/approve', [AdminController::class, 'approve']);
+        Route::delete('admin/users/{Id}', [AdminController::class, 'destroy']);
+    });
+
     // Resources (13 tables)
-    Route::apiResource('users', UserController::class);
+    Route::apiResource('users', UserController::class)->middleware('role:Admin');
     Route::apiResource('courses', CourseController::class);
     Route::apiResource('enrollments', EnrollmentController::class);
     Route::apiResource('lessons', LessonController::class);
@@ -42,7 +50,8 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::apiResource('announcements', AnnouncementController::class);
     Route::apiResource('comments', CommentController::class);
     Route::apiResource('certificates', CertificateController::class);
-    Route::apiResource('quizzes', QuizController::class);
+        Route::patch('courses/{course}/publish', [CourseController::class, 'togglePublish']);
+        Route::apiResource('quizzes', QuizController::class)->except(['create', 'edit']);
     Route::apiResource('questions', QuestionController::class);
     Route::apiResource('answer-options', AnswerOptionController::class);
     Route::apiResource('quiz-attempts', QuizAttemptController::class);

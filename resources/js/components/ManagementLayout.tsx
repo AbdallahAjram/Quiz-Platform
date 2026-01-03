@@ -36,7 +36,6 @@ const ManagementLayout = () => {
                         <NavLink
                             key={link.name}
                             to={link.path}
-                            end
                             className={({ isActive }) =>
                                 `flex items-center px-6 py-3 text-gray-100 rounded-lg ${isActive ? 'bg-gray-700' : 'hover:bg-gray-700'}`
                             }
@@ -54,7 +53,7 @@ const ManagementLayout = () => {
                 <header className="flex items-center justify-between p-6 bg-white border-b">
                     <div></div>
                     <div className="flex items-center">
-                        <span className="mr-4">Welcome, {user.name} ({user.Role})</span>
+                        <span className="mr-4">Welcome, {user.Name} ({user.Role})</span>
                         <button
                             onClick={handleLogout}
                             className="flex items-center px-4 py-2 font-semibold text-white bg-red-500 rounded-md hover:bg-red-600"

@@ -25,7 +25,7 @@ class CourseController extends Controller
             'Difficulty' => ['nullable', 'string', 'max:255'],
             'Thumbnail' => ['nullable', 'string', 'max:255'],
             'EstimatedDuration' => ['nullable', 'integer', 'min:1'],
-            'CreatedBy' => ['nullable', 'integer', 'exists:users,id'],
+            'CreatedBy' => ['nullable', 'integer', 'exists:users,Id'],
         ]);
 
         $user = auth()->user();
@@ -33,7 +33,7 @@ class CourseController extends Controller
         if ($user->Role === 'Admin' && !empty($data['CreatedBy'])) {
             // Admin is assigning to an instructor
         } else {
-            $data['CreatedBy'] = $user->id;
+            $data['CreatedBy'] = $user->Id;
         }
 
         $data['IsPublished'] = false; // Set IsPublished to false by default
@@ -70,5 +70,16 @@ class CourseController extends Controller
         $course->delete();
 
         return response()->json(['message' => 'Deleted successfully']);
+    }
+
+    public function togglePublish(Request $request, Course $course)
+    {
+        $data = $request->validate([
+            'IsPublished' => ['required', 'boolean'],
+        ]);
+
+        $course->update(['IsPublished' => $data['IsPublished']]);
+
+        return response()->json($course);
     }
 }

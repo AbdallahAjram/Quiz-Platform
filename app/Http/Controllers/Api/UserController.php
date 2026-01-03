@@ -11,25 +11,25 @@ class UserController extends Controller
 {
     public function index()
     {
-        return User::query()->orderByDesc('id')->get();
+        return User::query()->orderByDesc('Id')->get();
     }
 
     public function store(Request $request)
     {
         $data = $request->validate([
-            'name' => ['required', 'string', 'max:255'],
-            'email' => ['required', 'email', 'unique:users,email'],
-            'password' => ['required', 'string', 'min:6'],
+            'Name' => ['required', 'string', 'max:255'],
+            'Email' => ['required', 'email', 'unique:users,Email'],
+            'Password' => ['required', 'string', 'min:6'],
             'Role' => ['required', 'string'],
-            'is_active' => ['nullable', 'boolean'],
+            'IsActive' => ['nullable', 'boolean'],
         ]);
 
         $user = User::create([
-            'name' => $data['name'],
-            'email' => $data['email'],
-            'password' => Hash::make($data['password']),
+            'Name' => $data['Name'],
+            'Email' => $data['Email'],
+            'Password' => Hash::make($data['Password']),
             'Role' => $data['Role'],
-            'is_active' => $data['is_active'] ?? null,
+            'IsActive' => $data['IsActive'] ?? null,
         ]);
 
         return response()->json($user, 201);
@@ -43,15 +43,15 @@ class UserController extends Controller
     public function update(Request $request, User $user)
     {
         $data = $request->validate([
-            'name' => ['sometimes', 'string', 'max:255'],
-            'email' => ['sometimes', 'email', 'unique:users,email,' . $user->id],
-            'password' => ['nullable', 'string', 'min:6'],
+            'Name' => ['sometimes', 'string', 'max:255'],
+            'Email' => ['sometimes', 'email', 'unique:users,Email,' . $user->Id],
+            'Password' => ['nullable', 'string', 'min:6'],
             'Role' => ['sometimes', 'string'],
-            'is_active' => ['nullable', 'boolean'],
+            'IsActive' => ['nullable', 'boolean'],
         ]);
 
-        if (!empty($data['password'] ?? null)) {
-            $data['password'] = Hash::make($data['password']);
+        if (!empty($data['Password'] ?? null)) {
+            $data['Password'] = Hash::make($data['Password']);
         }
 
         $user->update($data);

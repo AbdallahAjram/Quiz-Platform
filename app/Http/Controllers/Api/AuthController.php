@@ -13,19 +13,21 @@ class AuthController extends Controller
     public function register(Request $request)
     {
         $data = $request->validate([
-            'name' => ['required','string','max:255'], // Changed from full_name
-            'email' => ['required','email','unique:users,email'],
-            'password' => ['required','string','min:6'],
-            'Role' => ['required','string'], // Changed from role
-            'is_active' => ['nullable','boolean'],
+            'Name' => ['required','string','max:255'],
+            'Email' => ['required','email','unique:users,Email'],
+            'Password' => ['required','string','min:6'],
+            'Role' => ['required','string'],
+            'IsActive' => ['nullable','boolean'],
         ]);
 
+        $isActive = $data['Role'] === 'Instructor' ? false : true;
+
         $user = User::create([
-            'name' => $data['name'], // Changed from full_name
-            'email' => $data['email'],
-            'password' => Hash::make($data['password']), // Changed from hashed_password
-            'Role' => $data['Role'], // Changed from role
-            'is_active' => $data['is_active'] ?? true,
+            'Name' => $data['Name'],
+            'Email' => $data['Email'],
+            'Password' => Hash::make($data['Password']),
+            'Role' => $data['Role'],
+            'IsActive' => $isActive,
         ]);
 
         $token = $user->createToken('api-token')->plainTextToken;
@@ -39,24 +41,33 @@ class AuthController extends Controller
     public function login(Request $request)
     {
         $data = $request->validate([
-            'email' => ['required','email'],
-            'password' => ['required','string'],
+            'Email' => ['required','email'],
+            'Password' => ['required','string'],
         ]);
 
-        $user = User::where('email', $data['email'])->first();
+        $user = User::where('Email', $data['Email'])->first();
 
-        if (!$user || !Hash::check($data['password'], $user->password)) { // Changed from hashed_password
+        if (!$user || !Hash::check($data['Password'], $user->Password)) {
             throw ValidationException::withMessages([
-                'email' => ['Invalid credentials.'],
+                'Email' => ['Invalid credentials.'],
             ]);
+        }
+
+        if (!$user->IsActive) {
+            return response()->json(['message' => 'Your account is pending administrator approval.'], 403);
         }
 
         $token = $user->createToken('api-token')->plainTextToken;
 
+        $redirect = match ($user->Role) {
+            'Admin', 'Instructor' => '/management/dashboard',
+            default => '/dashboard',
+        };
+
         return response()->json([
             'user' => $user,
             'token' => $token,
-            'Role' => $user->Role, // Changed from role
+            'redirect' => $redirect,
         ]);
     }
 

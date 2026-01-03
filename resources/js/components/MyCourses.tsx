@@ -1,9 +1,20 @@
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { BookOpen, Zap, BarChart, Plus } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import axios from 'axios';
 
-const CourseCard = ({ title, description, category, difficulty, progress }: { title: string, description: string, category: string, difficulty: string, progress: number }) => {
+interface Course {
+    Id: number;
+    Title: string;
+    Description: string;
+    Category: string;
+    Difficulty: string;
+    IsPublished: boolean;
+    CreatedBy: number;
+}
+
+const CourseCard = ({ course, onTogglePublish }: { course: Course, onTogglePublish: (courseId: number, isPublished: boolean) => void }) => {
     const difficultyColor = {
         Beginner: 'text-green-500',
         Intermediate: 'text-yellow-500',
@@ -18,26 +29,22 @@ const CourseCard = ({ title, description, category, difficulty, progress }: { ti
                         <BookOpen className="w-6 h-6 text-blue-500" />
                     </div>
                     <div>
-                        <h3 className="text-xl font-bold text-gray-800">{title}</h3>
-                        <p className="text-sm text-gray-500">{category}</p>
+                        <h3 className="text-xl font-bold text-gray-800">{course.Title}</h3>
+                        <p className="text-sm text-gray-500">{course.Category}</p>
                     </div>
                 </div>
-                <p className="text-gray-600 mb-4">{description}</p>
+                <p className="text-gray-600 mb-4">{course.Description}</p>
                 <div className="flex justify-between items-center mb-4 text-sm">
-                    <span className={`font-semibold ${difficultyColor[difficulty] || 'text-gray-500'}`}>{difficulty}</span>
+                    <span className={`font-semibold ${difficultyColor[course.Difficulty] || 'text-gray-500'}`}>{course.Difficulty}</span>
+                    <span className={`px-2 py-1 text-xs font-semibold rounded-full ${course.IsPublished ? 'bg-green-200 text-green-800' : 'bg-yellow-200 text-yellow-800'}`}>
+                        {course.IsPublished ? 'Published' : 'Draft'}
+                    </span>
                 </div>
-                <div>
-                    <div className="flex justify-between text-sm text-gray-600 mb-1">
-                        <span>Progress</span>
-                        <span>{progress}%</span>
-                    </div>
-                    <div className="w-full bg-gray-200 rounded-full h-2.5">
-                        <div className="bg-blue-600 h-2.5 rounded-full" style={{ width: `${progress}%` }}></div>
-                    </div>
-                </div>
-                <button className="w-full mt-6 px-4 py-2 text-center font-semibold text-white bg-blue-600 rounded-lg hover:bg-blue-700 transition-colors duration-300 flex items-center justify-center">
-                    <Zap className="w-4 h-4 mr-2" />
-                    Continue Learning
+                <button 
+                    onClick={() => onTogglePublish(course.Id, !course.IsPublished)}
+                    className="w-full mt-6 px-4 py-2 text-center font-semibold text-white bg-blue-600 rounded-lg hover:bg-blue-700 transition-colors duration-300 flex items-center justify-center"
+                >
+                    {course.IsPublished ? 'Unpublish' : 'Publish'}
                 </button>
             </div>
         </div>
@@ -47,11 +54,49 @@ const CourseCard = ({ title, description, category, difficulty, progress }: { ti
 
 const MyCourses = () => {
     const navigate = useNavigate();
-    const courses = [
-        { title: "Web Development Basics", description: "An introduction to HTML, CSS, and JavaScript.", category: "Web Development", difficulty: "Beginner", progress: 75 },
-        { title: "Advanced Laravel Patterns", description: "Master design patterns in Laravel for scalable apps.", category: "Backend Development", difficulty: "Advanced", progress: 40 },
-        { title: "React UI Design", description: "Create beautiful and responsive UIs with React and Tailwind CSS.", category: "Frontend Development", difficulty: "Intermediate", progress: 60 },
-    ];
+    const [courses, setCourses] = useState<Course[]>([]);
+    const [loading, setLoading] = useState(true);
+    const user = JSON.parse(localStorage.getItem('user') || '{}');
+
+    useEffect(() => {
+        const fetchCourses = async () => {
+            try {
+                const token = localStorage.getItem('token');
+                const response = await axios.get('http://127.0.0.1:8000/api/courses', {
+                    headers: { 'Authorization': `Bearer ${token}` },
+                });
+                
+                if (user.Role === 'Admin') {
+                    setCourses(response.data);
+                } else {
+                    setCourses(response.data.filter(course => course.CreatedBy === user.Id));
+                }
+                
+            } catch (error) {
+                console.error('Failed to fetch courses:', error);
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        fetchCourses();
+    }, [user.Id, user.Role]);
+
+    const handleTogglePublish = async (courseId: number, isPublished: boolean) => {
+        try {
+            const token = localStorage.getItem('token');
+            await axios.patch(`http://127.0.0.1:8000/api/courses/${courseId}/publish`, { IsPublished: isPublished }, {
+                headers: { 'Authorization': `Bearer ${token}` },
+            });
+            setCourses(courses.map(c => c.Id === courseId ? { ...c, IsPublished: isPublished } : c));
+        } catch (error) {
+            console.error('Failed to toggle publish status:', error);
+        }
+    };
+
+    if (loading) {
+        return <div>Loading...</div>;
+    }
 
     return (
         <div>
@@ -66,7 +111,7 @@ const MyCourses = () => {
                 </button>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-                {courses.map(course => <CourseCard key={course.title} {...course} />)}
+                {courses.map(course => <CourseCard key={course.Id} course={course} onTogglePublish={handleTogglePublish} />)}
             </div>
         </div>
     );

@@ -27,17 +27,17 @@ const Login = () => {
         try {
             const response = await axios.post(
                 'http://127.0.0.1:8000/api/auth/login',
-                { email, password },
+                { Email: email, Password: password },
                 { headers: { 'Accept': 'application/json' } }
             );
 
             if (response.data.token && response.data.user) {
                 localStorage.setItem('token', response.data.token);
                 localStorage.setItem('user', JSON.stringify(response.data.user));
-                setSuccess('Login successful! Redirecting to dashboard...');
+                setSuccess('Login successful! Redirecting...');
                 setTimeout(() => {
-                    navigate('/dashboard');
-                }, 2000);
+                    navigate(response.data.redirect);
+                }, 1000);
             } else {
                  setError('Login failed. Please check your credentials.');
             }
