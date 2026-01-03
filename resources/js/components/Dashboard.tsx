@@ -38,6 +38,7 @@ const Dashboard = () => {
                 <nav className="mt-10">
                     <NavLink to="/dashboard" icon={<Home className="w-5 h-5" />}>Dashboard</NavLink>
                     <NavLink to="courses" icon={<BookOpen className="w-5 h-5" />}>My Courses</NavLink>
+                    <NavLink to="courses/browse" icon={<BookOpen className="w-5 h-5" />}>Browse Courses</NavLink>
                     <NavLink to="profile" icon={<User className="w-5 h-5" />}>Profile</NavLink>
                 </nav>
             </aside>

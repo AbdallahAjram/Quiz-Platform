@@ -31,8 +31,7 @@ class Enrollment extends Model
 
     public function user(): BelongsTo
     {
-        // users PK is lowercase "id"
-        return $this->belongsTo(User::class, 'UserId', 'id');
+        return $this->belongsTo(User::class, 'UserId', 'Id');
     }
 
     public function course(): BelongsTo

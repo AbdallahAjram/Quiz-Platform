@@ -10,9 +10,16 @@ class CourseController extends Controller
 {
     public function index()
     {
-        return Course::query()
-            ->orderByDesc('Id')
-            ->get();
+        $user = auth()->user();
+        $query = Course::query();
+
+        if ($user->Role === 'Admin') {
+            $query->with('instructor:Id,Name');
+        } else {
+            $query->where('CreatedBy', $user->Id);
+        }
+
+        return $query->orderByDesc('Id')->get();
     }
 
     public function store(Request $request)
@@ -30,26 +37,57 @@ class CourseController extends Controller
 
         $user = auth()->user();
 
-        if ($user->Role === 'Admin' && !empty($data['CreatedBy'])) {
-            // Admin is assigning to an instructor
-        } else {
+        // Assign CreatedBy: Admin can pick an instructor; otherwise it's the current user
+        if ($user->Role !== 'Admin' || empty($data['CreatedBy'])) {
             $data['CreatedBy'] = $user->Id;
         }
 
-        $data['IsPublished'] = false; // Set IsPublished to false by default
+        $data['IsPublished'] = false; 
 
         $course = Course::create($data);
 
         return response()->json($course, 201);
     }
 
-    public function show(Course $course)
+    public function availableCourses(Request $request)
     {
+        $userId = $request->user()->Id;
+        $courses = Course::where('IsPublished', true)->get();
+
+        $courses->each(function ($course) use ($userId) {
+            $course->IsEnrolled = $course->enrollments()->where('UserId', $userId)->exists();
+        });
+
+        return response()->json($courses);
+    }
+
+    public function show($Id)
+    {
+        return Course::findOrFail($Id);
+    }
+
+    public function togglePublish(Request $request, $Id)
+    {
+        $course = Course::findOrFail($Id);
+
+        $data = $request->validate([
+            'IsPublished' => ['required', 'boolean'],
+        ]);
+
+        $course->update(['IsPublished' => $data['IsPublished']]);
+
         return response()->json($course);
     }
 
-    public function update(Request $request, Course $course)
+    public function update(Request $request, $Id)
     {
+        $course = Course::findOrFail($Id);
+        $user = auth()->user();
+
+        if ($user->Role !== 'Admin' && $course->CreatedBy !== $user->Id) {
+            return response()->json(['message' => 'You are not authorized to update this course.'], 403);
+        }
+
         $data = $request->validate([
             'Title' => ['sometimes', 'required', 'string', 'max:255'],
             'ShortDescription' => ['nullable', 'string', 'max:255'],
@@ -61,25 +99,12 @@ class CourseController extends Controller
         ]);
 
         $course->update($data);
-
         return response()->json($course);
     }
 
     public function destroy(Course $course)
     {
         $course->delete();
-
         return response()->json(['message' => 'Deleted successfully']);
-    }
-
-    public function togglePublish(Request $request, Course $course)
-    {
-        $data = $request->validate([
-            'IsPublished' => ['required', 'boolean'],
-        ]);
-
-        $course->update(['IsPublished' => $data['IsPublished']]);
-
-        return response()->json($course);
     }
 }

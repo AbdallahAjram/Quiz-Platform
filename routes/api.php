@@ -1,7 +1,6 @@
 <?php
 
 use Illuminate\Support\Facades\Route;
-
 use App\Http\Controllers\Api\{
     AuthController,
     UserController,
@@ -34,29 +33,44 @@ Route::middleware('auth:sanctum')->group(function () {
 
     Route::post('auth/logout', [AuthController::class, 'logout']);
 
-    // Admin-only routes
+    // Admin-only management routes
     Route::middleware('role:Admin')->group(function () {
+        // This is for fetching the table of users
+        Route::get('admin/users', [UserController::class, 'index']); 
+        
+        // Your specific Admin actions
         Route::post('admin/instructors', [AdminController::class, 'createInstructor']);
         Route::patch('admin/users/{Id}/approve', [AdminController::class, 'approve']);
         Route::delete('admin/users/{Id}', [AdminController::class, 'destroy']);
     });
 
-    // Resources (13 tables)
+    // Resources (Note: only allow Admin to access full User resource)
     Route::apiResource('users', UserController::class)->middleware('role:Admin');
-    Route::apiResource('courses', CourseController::class);
+    
+    Route::middleware('role:Student')->prefix('student')->group(function () {
+        Route::get('enrolled-courses-count', [EnrollmentController::class, 'enrolledCoursesCount']);
+        Route::get('completed-lessons-count', [LessonCompletionController::class, 'completedLessonsCount']);
+        Route::get('available-courses', [CourseController::class, 'availableCourses']);
+    });
+    
+    // Course Management (Accessible by Admin and Instructor)
+    Route::apiResource('courses', CourseController::class)->parameters(['courses' => 'Id']);
+    Route::get('courses/{CourseId}/lessons', [LessonController::class, 'getLessonsForCourse']);
+    Route::patch('courses/{course}/publish', [CourseController::class, 'togglePublish']);
+
+    // Other Tables
     Route::apiResource('enrollments', EnrollmentController::class);
+    Route::get('enrollments/my-courses', [EnrollmentController::class, 'myCourses']);
     Route::apiResource('lessons', LessonController::class);
     Route::apiResource('lesson-completions', LessonCompletionController::class);
     Route::apiResource('announcements', AnnouncementController::class);
     Route::apiResource('comments', CommentController::class);
     Route::apiResource('certificates', CertificateController::class);
-        Route::patch('courses/{course}/publish', [CourseController::class, 'togglePublish']);
-        Route::apiResource('quizzes', QuizController::class)->except(['create', 'edit']);
+    
+    // Quiz System
+    Route::apiResource('quizzes', QuizController::class)->except(['create', 'edit']);
     Route::apiResource('questions', QuestionController::class);
     Route::apiResource('answer-options', AnswerOptionController::class);
     Route::apiResource('quiz-attempts', QuizAttemptController::class);
     Route::apiResource('quiz-attempt-answers', QuizAttemptAnswerController::class);
-
-    // Optional: if you have a submit endpoint for attempts
-    // Route::post('quiz-attempts/{quiz_attempt}/submit', [QuizAttemptController::class, 'submit']);
 });

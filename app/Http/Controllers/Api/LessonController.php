@@ -38,6 +38,12 @@ class LessonController extends Controller
         return response()->json($lessons);
     }
 
+    public function getLessonsForCourse($CourseId)
+    {
+        $lessons = Lesson::where('CourseId', $CourseId)->orderBy('Order')->get();
+        return response()->json($lessons);
+    }
+
     public function store(Request $request)
     {
         $validated = $request->validate([

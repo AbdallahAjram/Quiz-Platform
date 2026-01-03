@@ -39,15 +39,12 @@ class EnrollmentController extends Controller
     public function store(Request $request)
     {
         $validated = $request->validate([
-    'CourseId' => ['required', 'integer', 'exists:courses,id'],
-    'Status' => ['nullable', 'string', 'max:50'],
-    'EnrolledAt' => ['nullable', 'date'],
-]);
+            'CourseId' => ['required', 'integer', 'exists:courses,Id'],
+            'Status' => ['nullable', 'string', 'max:50'],
+            'EnrolledAt' => ['nullable', 'date'],
+        ]);
 
-
-
-        $userId = $request->user()->id;
-
+        $userId = $request->user()->Id;
 
         // Idempotent: prevent duplicates (you also have a DB unique constraint)
         $existing = Enrollment::where('UserId', $userId)
@@ -129,6 +126,27 @@ class EnrollmentController extends Controller
             'message' => 'Enrollment updated successfully.',
             'data' => $enrollment,
         ]);
+    }
+
+    public function myCourses(Request $request)
+    {
+        $userId = $request->user()->id;
+
+        $enrollments = Enrollment::where('UserId', $userId)->with('course')->get();
+
+        $courses = $enrollments->map(function ($enrollment) {
+            return $enrollment->course;
+        });
+
+        return response()->json($courses);
+    }
+
+    public function enrolledCoursesCount(Request $request)
+    {
+        $userId = $request->user()->id;
+        $count = Enrollment::where('UserId', $userId)->count();
+
+        return response()->json(['count' => $count]);
     }
 
     public function destroy(string $id)

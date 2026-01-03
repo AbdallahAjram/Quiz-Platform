@@ -128,4 +128,12 @@ class LessonCompletionController extends Controller
 
         return response()->json(['message' => 'Lesson completion deleted.']);
     }
+
+    public function completedLessonsCount(Request $request)
+    {
+        $userId = $request->user()->id;
+        $count = LessonCompletion::where('UserId', $userId)->count();
+
+        return response()->json(['count' => $count]);
+    }
 }

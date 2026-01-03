@@ -10,14 +10,14 @@ import DashboardHome from './DashboardHome';
 import ManagementLayout from './ManagementLayout';
 import UserManagement from './UserManagement';
 import ManagementDashboard from './ManagementDashboard';
+import ProtectedRoute from './ProtectedRoute';
+import CourseManagement from "./CourseManagement";
+import CourseForm from "./CourseForm";
+import BrowseCourses from "./BrowseCourses";
+import EditCourse from "./EditCourse";
+import LessonManagement from "./LessonManagement";
 
-const ProtectedRoute = ({ children }: { children: JSX.Element }) => {
-    const token = localStorage.getItem('token');
-    if (!token) {
-        return <Navigate to="/login" />;
-    }
-    return children;
-};
+import LessonViewer from "./LessonViewer";
 
 const App = () => {
     return (
@@ -28,7 +28,7 @@ const App = () => {
                 <Route
                     path="/dashboard"
                     element={
-                        <ProtectedRoute>
+                        <ProtectedRoute roles={['Student']}>
                             <Dashboard />
                         </ProtectedRoute>
                     }
@@ -36,11 +36,12 @@ const App = () => {
                     <Route index element={<DashboardHome />} />
                     <Route path="courses" element={<MyCourses />} />
                     <Route path="profile" element={<Profile />} />
+                    <Route path="courses/browse" element={<BrowseCourses />} />
                 </Route>
                 <Route
                     path="/management"
                     element={
-                        <ProtectedRoute>
+                        <ProtectedRoute roles={['Admin', 'Instructor']}>
                             <ManagementLayout />
                         </ProtectedRoute>
                     }
@@ -48,7 +49,13 @@ const App = () => {
                     <Route index element={<ManagementDashboard />} />
                     <Route path="dashboard" element={<ManagementDashboard />} />
                     <Route path="users" element={<UserManagement />} />
+                    <Route path="courses" element={<CourseManagement />} />
+                    <Route path="courses/create" element={<CourseForm />} />
+                    <Route path="courses/edit/:Id" element={<EditCourse />} />
+                    <Route path="courses/:courseId/lessons" element={<LessonManagement />} />
                 </Route>
+                <Route path="/courses/:courseId/lessons" element={<ProtectedRoute roles={['Student']}><LessonViewer /></ProtectedRoute>} />
+                <Route path="/courses/:courseId/lessons/:lessonId" element={<ProtectedRoute roles={['Student']}><LessonViewer /></ProtectedRoute>} />
                 <Route path="*" element={<Navigate to="/login" />} />
             </Routes>
         </Router>

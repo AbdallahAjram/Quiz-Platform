@@ -10,7 +10,6 @@ return new class extends Migration
     {
         Schema::create('courses', function (Blueprint $table) {
             $table->bigIncrements('Id');
-
             $table->string('Title');
             $table->string('ShortDescription')->nullable();
             $table->text('LongDescription')->nullable();
@@ -18,8 +17,12 @@ return new class extends Migration
             $table->string('Difficulty')->nullable();
             $table->string('Thumbnail')->nullable();
             $table->integer('EstimatedDuration')->nullable();
+            
+            // Critical Missing Columns
+            $table->boolean('IsPublished')->default(false);
+            $table->unsignedBigInteger('CreatedBy');
+            $table->foreign('CreatedBy')->references('Id')->on('users')->onDelete('cascade');
 
-            // PascalCase timestamps (explicit)
             $table->timestamp('CreatedAt')->useCurrent();
             $table->timestamp('UpdatedAt')->nullable();
         });

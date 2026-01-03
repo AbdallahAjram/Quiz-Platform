@@ -3,16 +3,15 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
-use Illuminate\Http\Request;
-
-
 use App\Models\User;
 use Illuminate\Http\Request;
-use App\Http\Controllers\Controller;
 use Illuminate\Support\Facades\Hash;
 
 class AdminController extends Controller
 {
+    /**
+     * Admin manually adds an instructor (Auto-approved).
+     */
     public function createInstructor(Request $request)
     {
         $data = $request->validate([
@@ -26,19 +25,27 @@ class AdminController extends Controller
             'Email' => $data['Email'],
             'Password' => Hash::make($data['Password']),
             'Role' => 'Instructor',
-            'IsActive' => true,
+            'IsActive' => true, // Manually added instructors are active by default
         ]);
 
         return response()->json($user, 201);
     }
+
+    /**
+     * Approve a pending instructor.
+     */
     public function approve($Id)
     {
+        // Finding user by PascalCase primary key Id
         $user = User::findOrFail($Id);
         $user->update(['IsActive' => true]);
 
         return response()->json($user, 200);
     }
     
+    /**
+     * Reject and delete a pending instructor.
+     */
     public function destroy($Id)
     {
         $user = User::findOrFail($Id);

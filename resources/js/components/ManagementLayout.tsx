@@ -1,6 +1,6 @@
 import React from 'react';
 import { NavLink, Outlet, useNavigate } from 'react-router-dom';
-import { LayoutDashboard, Book, BrainCircuit, BarChart, Users, LogOut, PlusCircle } from 'lucide-react';
+import { LayoutDashboard, Book, BrainCircuit, BarChart, Users, LogOut } from 'lucide-react';
 
 const ManagementLayout = () => {
     const navigate = useNavigate();
@@ -12,17 +12,18 @@ const ManagementLayout = () => {
         navigate('/login');
     };
 
-    const sidebarLinks = [
+    let sidebarLinks = [
         { name: 'Dashboard', path: '/management/dashboard', icon: LayoutDashboard },
-        { name: 'Courses', path: '/management/courses', icon: Book },
-        { name: 'Lessons', path: '/management/lessons', icon: BrainCircuit },
-        { name: 'Quizzes', path: '/management/quizzes', icon: BrainCircuit },
-        { name: 'Analytics', path: '/management/analytics', icon: BarChart },
+        { name: 'Course Management', path: '/management/courses', icon: Book, roles: ['Admin', 'Instructor'] },
+        { name: 'Lessons', path: '/management/lessons', icon: BrainCircuit, roles: ['Admin', 'Instructor'] },
+        { name: 'Quizzes', path: '/management/quizzes', icon: BrainCircuit, roles: ['Admin', 'Instructor'] },
+        { name: 'Analytics', path: '/management/analytics', icon: BarChart, roles: ['Admin'] },
+        { name: 'User Management', path: '/management/users', icon: Users, roles: ['Admin'] },
     ];
 
-    if (user.Role === 'Admin') {
-        sidebarLinks.push({ name: 'User Management', path: '/management/users', icon: Users });
-    }
+    const userRole = user.Role;
+    sidebarLinks = sidebarLinks.filter(link => !link.roles || link.roles.includes(userRole));
+
 
     return (
         <div className="flex h-screen bg-gray-100">
