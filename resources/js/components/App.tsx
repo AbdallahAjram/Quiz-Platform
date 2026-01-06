@@ -53,6 +53,7 @@ const App = () => {
                     <Route path="courses/create" element={<CourseForm />} />
                     <Route path="courses/edit/:Id" element={<EditCourse />} />
                     <Route path="courses/:courseId/lessons" element={<LessonManagement />} />
+                    <Route path="profile" element={<Profile />} />
                 </Route>
                 <Route path="/courses/:courseId/lessons" element={<ProtectedRoute roles={['Student']}><LessonViewer /></ProtectedRoute>} />
                 <Route path="/courses/:courseId/lessons/:lessonId" element={<ProtectedRoute roles={['Student']}><LessonViewer /></ProtectedRoute>} />

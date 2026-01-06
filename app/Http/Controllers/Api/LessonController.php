@@ -51,11 +51,10 @@ class LessonController extends Controller
             'Title' => ['required', 'string', 'max:255'],
             'Content' => ['required', 'string'],
             'VideoUrl' => ['nullable', 'string', 'max:2048'],
+            'AttachmentUrl' => ['nullable', 'string', 'max:2048'],
             'EstimatedDuration' => ['required', 'integer', 'min:0'],
             'Order' => ['required', 'integer', 'min:0'],
         ]);
-
-        $validated['CreatedBy'] = auth()->id();
 
         $lesson = Lesson::create($validated);
 
@@ -95,6 +94,7 @@ class LessonController extends Controller
             'Title' => ['sometimes', 'string', 'max:255'],
             'Content' => ['sometimes', 'string'],
             'VideoUrl' => ['nullable', 'string', 'max:2048'],
+            'AttachmentUrl' => ['nullable', 'string', 'max:2048'],
             'EstimatedDuration' => ['sometimes', 'integer', 'min:0'],
             'Order' => ['sometimes', 'integer', 'min:0'],
         ]);
@@ -120,8 +120,7 @@ class LessonController extends Controller
 
         $lesson->delete();
 
-        return response()->json([
-            'message' => 'Lesson deleted successfully.',
-        ]);
+        return response()->json(['message' => 'Lesson deleted successfully.']);
     }
 }
+

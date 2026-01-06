@@ -1,5 +1,6 @@
 <?php
 
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Api\{
     AuthController,
@@ -16,7 +17,8 @@ use App\Http\Controllers\Api\{
     AnswerOptionController,
     QuizAttemptController,
     QuizAttemptAnswerController,
-    AdminController
+    AdminController,
+    DashboardController
 };
 
 // Health check
@@ -32,16 +34,25 @@ Route::post('auth/login', [AuthController::class, 'login']);
 Route::middleware('auth:sanctum')->group(function () {
 
     Route::post('auth/logout', [AuthController::class, 'logout']);
+    Route::get('profile', function (Request $request) {
+        return $request->user();
+    });
+
+    Route::get('dashboard/stats', [DashboardController::class, 'getStats']);
 
     // Admin-only management routes
-    Route::middleware('role:Admin')->group(function () {
+    Route::middleware('role:Admin')->prefix('admin')->group(function () {
         // This is for fetching the table of users
-        Route::get('admin/users', [UserController::class, 'index']); 
+        Route::get('users', [UserController::class, 'index']); 
         
         // Your specific Admin actions
-        Route::post('admin/instructors', [AdminController::class, 'createInstructor']);
-        Route::patch('admin/users/{Id}/approve', [AdminController::class, 'approve']);
-        Route::delete('admin/users/{Id}', [AdminController::class, 'destroy']);
+        Route::post('instructors', [AdminController::class, 'createInstructor']);
+        Route::patch('users/{Id}/approve', [AdminController::class, 'approve']);
+        Route::delete('users/{Id}', [AdminController::class, 'destroy']);
+        
+        // Dashboard specific routes
+        Route::get('stats', [AdminController::class, 'getDashboardStats']);
+        Route::get('recent-enrollments', [AdminController::class, 'getRecentEnrollments']);
     });
 
     // Resources (Note: only allow Admin to access full User resource)

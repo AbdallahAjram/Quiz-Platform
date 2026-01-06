@@ -37,33 +37,33 @@ class User extends Authenticatable
 
     public function enrollments()
     {
-        return $this->hasMany(Enrollment::class, 'UserId', 'id');
+        return $this->hasMany(Enrollment::class, 'UserId', 'Id');
     }
 
     public function lessonCompletions()
     {
-        return $this->hasMany(LessonCompletion::class, 'UserId', 'id');
+        return $this->hasMany(LessonCompletion::class, 'UserId', 'Id');
     }
 
     public function quizAttempts()
     {
-        return $this->hasMany(QuizAttempt::class, 'UserId', 'id');
+        return $this->hasMany(QuizAttempt::class, 'UserId', 'Id');
     }
 
     public function comments()
     {
-        return $this->hasMany(Comment::class, 'UserId', 'id');
+        return $this->hasMany(Comment::class, 'UserId', 'Id');
     }
 
     public function announcements()
     {
-        // announcements.CreatedBy -> users.id
-        return $this->hasMany(Announcement::class, 'CreatedBy', 'id');
+        // announcements.CreatedBy -> users.Id
+        return $this->hasMany(Announcement::class, 'CreatedBy', 'Id');
     }
 
     public function certificates()
     {
-        return $this->hasMany(Certificate::class, 'UserId', 'id');
+        return $this->hasMany(Certificate::class, 'UserId', 'Id');
     }
 
 }

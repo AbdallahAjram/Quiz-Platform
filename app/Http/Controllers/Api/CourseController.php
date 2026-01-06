@@ -52,10 +52,16 @@ class CourseController extends Controller
     public function availableCourses(Request $request)
     {
         $userId = $request->user()->Id;
-        $courses = Course::where('IsPublished', true)->get();
+        $courses = Course::where('IsPublished', true)
+            ->with('instructor:Id,Name')
+            ->get();
 
         $courses->each(function ($course) use ($userId) {
             $course->IsEnrolled = $course->enrollments()->where('UserId', $userId)->exists();
+            if ($course->IsEnrolled) {
+                $firstLesson = $course->lessons()->orderBy('Order')->first();
+                $course->first_lesson_id = $firstLesson ? $firstLesson->Id : null;
+            }
         });
 
         return response()->json($courses);

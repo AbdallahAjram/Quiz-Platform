@@ -8,6 +8,7 @@ interface Lesson {
     Title: string;
     Content: string;
     VideoUrl: string;
+    AttachmentUrl?: string;
 }
 
 interface LessonCompletion {
@@ -20,39 +21,40 @@ const LessonViewer = () => {
     const [currentLesson, setCurrentLesson] = useState<Lesson | null>(null);
     const [completions, setCompletions] = useState<LessonCompletion[]>([]);
     const [toast, setToast] = useState<{ message: string, type: 'success' | 'error' } | null>(null);
+    const [isLoading, setIsLoading] = useState(true);
 
     useEffect(() => {
-        const fetchLessons = async () => {
+        const fetchLessonsAndCompletions = async () => {
+            setIsLoading(true);
             try {
                 const token = localStorage.getItem('token');
-                const response = await axios.get(`http://127.0.0.1:8000/api/courses/${courseId}/lessons`, {
-                    headers: { 'Authorization': `Bearer ${token}` },
-                });
-                setLessons(response.data);
-                if (lessonId) {
-                    setCurrentLesson(response.data.find((l: Lesson) => l.Id === parseInt(lessonId)));
+                const [lessonsResponse, completionsResponse] = await Promise.all([
+                    axios.get(`http://127.0.0.1:8000/api/courses/${courseId}/lessons`, {
+                        headers: { 'Authorization': `Bearer ${token}` },
+                    }),
+                    axios.get(`http://127.0.0.1:8000/api/lesson-completions?CourseId=${courseId}`, {
+                        headers: { 'Authorization': `Bearer ${token}` },
+                    })
+                ]);
+
+                setLessons(lessonsResponse.data);
+                setCompletions(completionsResponse.data.data);
+
+                const targetLessonId = lessonId ? parseInt(lessonId) : lessonsResponse.data[0]?.Id;
+                if (targetLessonId) {
+                    setCurrentLesson(lessonsResponse.data.find((l: Lesson) => l.Id === targetLessonId) || null);
                 } else {
-                    setCurrentLesson(response.data[0]);
+                    setCurrentLesson(null);
                 }
+
             } catch (error) {
-                setToast({ message: 'Failed to fetch lessons.', type: 'error' });
+                setToast({ message: 'Failed to fetch lesson data.', type: 'error' });
+            } finally {
+                setIsLoading(false);
             }
         };
 
-        const fetchCompletions = async () => {
-            try {
-                const token = localStorage.getItem('token');
-                const response = await axios.get(`http://127.0.0.1:8000/api/lesson-completions?CourseId=${courseId}`, {
-                    headers: { 'Authorization': `Bearer ${token}` },
-                });
-                setCompletions(response.data.data);
-            } catch (error) {
-                console.error('Failed to fetch completions', error);
-            }
-        };
-
-        fetchLessons();
-        fetchCompletions();
+        fetchLessonsAndCompletions();
     }, [courseId, lessonId]);
 
     const handleMarkAsCompleted = async () => {
@@ -69,22 +71,56 @@ const LessonViewer = () => {
         }
     };
 
+    const handleDownload = async (url: string) => {
+        try {
+            const response = await fetch(url);
+            const blob = await response.blob();
+            const blobUrl = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = blobUrl;
+            
+            // Extract filename from URL
+            const urlPath = new URL(url).pathname;
+            const decodedPath = decodeURIComponent(urlPath);
+            const filename = decodedPath.substring(decodedPath.lastIndexOf('/') + 1);
+            const finalFilename = filename.split('?')[0].split('/').pop() || 'download';
+            
+            a.download = finalFilename;
+            document.body.appendChild(a);
+            a.click();
+            window.URL.revokeObjectURL(blobUrl);
+            a.remove();
+        } catch (error) {
+            console.error('Download failed:', error);
+            setToast({ message: 'Failed to download resource.', type: 'error' });
+        }
+    };
+
     const isCompleted = (lesson: Lesson) => completions.some(c => c.LessonId === lesson.Id);
 
-    if (!currentLesson) return <div className="p-8 text-center text-gray-500">Loading lesson...</div>;
+    if (isLoading) {
+        return <div className="p-8 text-center text-gray-500">Loading lesson...</div>;
+    }
 
+    if (lessons.length === 0) {
+        return <div className="p-8 text-center text-gray-500">No lessons have been added to this course yet. Check back soon!</div>;
+    }
+    
     return (
         <div className="flex h-screen bg-gray-100">
-            <div className="w-80 bg-white border-r">
-                <div className="p-6">
-                    <h2 className="text-xl font-bold">Lessons</h2>
+            <div className="w-80 bg-white border-r flex flex-col">
+                 <div className="p-6 border-b">
+                    <Link to="/dashboard" className="text-sm text-blue-600 hover:underline">
+                        &larr; Back to Dashboard
+                    </Link>
+                    <h2 className="text-xl font-bold mt-4">Lessons</h2>
                 </div>
-                <nav>
+                <nav className="flex-grow overflow-y-auto">
                     {lessons.map(lesson => (
                         <Link
                             key={lesson.Id}
                             to={`/courses/${courseId}/lessons/${lesson.Id}`}
-                            className={`flex items-center justify-between px-6 py-3 text-gray-700 ${currentLesson.Id === lesson.Id ? 'bg-gray-200' : ''}`}
+                            className={`flex items-center justify-between px-6 py-3 text-gray-700 ${currentLesson?.Id === lesson.Id ? 'bg-gray-200' : ''}`}
                         >
                             {lesson.Title}
                             {isCompleted(lesson) && <span className="text-green-500">✓</span>}
@@ -92,33 +128,55 @@ const LessonViewer = () => {
                     ))}
                 </nav>
             </div>
-            <div className="flex-1 p-8">
+            <div className="flex-1 p-8 overflow-y-auto">
                 {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
-                <h1 className="text-3xl font-bold mb-4">{currentLesson.Title}</h1>
-                {currentLesson.VideoUrl && (
-                    <div className="mb-8">
-                        <iframe
-                            width="100%"
-                            height="500"
-                            src={currentLesson.VideoUrl.replace('watch?v=', 'embed/')}
-                            title={currentLesson.Title}
-                            frameBorder="0"
-                            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                            allowFullScreen
-                        ></iframe>
-                    </div>
+                
+                {!currentLesson ? (
+                     <div className="text-center text-gray-500">Please select a lesson to start learning.</div>
+                ) : (
+                    <>
+                        <h1 className="text-3xl font-bold mb-4">{currentLesson.Title}</h1>
+                        {currentLesson.VideoUrl && (
+                            <div className="mb-8">
+                                <a
+                                    href={currentLesson.VideoUrl}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="inline-block px-6 py-2 font-semibold text-white bg-blue-600 rounded-lg hover:bg-blue-700"
+                                >
+                                    Watch Lesson on YouTube
+                                </a>
+                            </div>
+                        )}
+                        <div className="prose max-w-none" dangerouslySetInnerHTML={{ __html: currentLesson.Content }} />
+
+                        {currentLesson.AttachmentUrl && (
+                            <div className="mt-8">
+                                <button
+                                    onClick={() => handleDownload(currentLesson.AttachmentUrl!)}
+                                    className="inline-block px-6 py-2 font-semibold text-white bg-gray-600 rounded-lg hover:bg-gray-700"
+                                >
+                                    Download Resource
+                                </button>
+                            </div>
+                        )}
+
+                        <div className="mt-8">
+                            {isCompleted(currentLesson) ? (
+                                <span className="inline-block px-6 py-2 font-semibold text-white bg-green-500 rounded-lg cursor-not-allowed">
+                                    ✓ Completed
+                                </span>
+                            ) : (
+                                <button
+                                    onClick={handleMarkAsCompleted}
+                                    className="px-6 py-2 font-semibold text-white bg-green-600 rounded-lg hover:bg-green-700"
+                                >
+                                    Mark as Completed
+                                </button>
+                            )}
+                        </div>
+                    </>
                 )}
-                <div className="prose max-w-none" dangerouslySetInnerHTML={{ __html: currentLesson.Content }} />
-                <div className="mt-8">
-                    {!isCompleted(currentLesson) && (
-                        <button
-                            onClick={handleMarkAsCompleted}
-                            className="px-6 py-2 font-semibold text-white bg-green-600 rounded-lg hover:bg-green-700"
-                        >
-                            Mark as Completed
-                        </button>
-                    )}
-                </div>
             </div>
         </div>
     );

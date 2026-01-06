@@ -32,8 +32,8 @@ const DashboardHome = () => {
                         headers: { 'Authorization': `Bearer ${token}` },
                     }),
                 ]);
-                setEnrolledCoursesCount(enrolledCoursesResponse.data.count);
-                setCompletedLessonsCount(completedLessonsResponse.data.count);
+                setEnrolledCoursesCount(enrolledCoursesResponse.data.EnrolledCoursesCount);
+                setCompletedLessonsCount(completedLessonsResponse.data.CompletedLessonsCount);
             } catch (error) {
                 console.error('Failed to fetch dashboard counts:', error);
             }

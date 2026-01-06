@@ -130,7 +130,7 @@ class EnrollmentController extends Controller
 
     public function myCourses(Request $request)
     {
-        $userId = $request->user()->id;
+        $userId = $request->user()->Id;
 
         $enrollments = Enrollment::where('UserId', $userId)->with('course')->get();
 
@@ -143,10 +143,10 @@ class EnrollmentController extends Controller
 
     public function enrolledCoursesCount(Request $request)
     {
-        $userId = $request->user()->id;
+        $userId = $request->user()->Id;
         $count = Enrollment::where('UserId', $userId)->count();
 
-        return response()->json(['count' => $count]);
+        return response()->json(['EnrolledCoursesCount' => $count]);
     }
 
     public function destroy(string $id)

@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import Modal from './Modal';
@@ -21,6 +20,7 @@ const UserManagement = () => {
         Name: '',
         Email: '',
         Password: '',
+        Role: 'Instructor', // Default role
     });
 
     useEffect(() => {
@@ -42,8 +42,6 @@ const UserManagement = () => {
     };
 
     const handleApprove = async (userId: number) => {
-        console.log(`Attempting to approve user with ID: ${userId}`);
-
         try {
             const token = localStorage.getItem('token');
             await axios.patch(`http://127.0.0.1:8000/api/admin/users/${userId}/approve`, {}, {
@@ -56,11 +54,10 @@ const UserManagement = () => {
     };
 
     const handleReject = async (userId: number) => {
-        console.log(`Attempting to reject user with ID: ${userId}`);
         if (window.confirm('Are you sure you want to reject and delete this user?')) {
             try {
                 const token = localStorage.getItem('token');
-                await axios.delete(`http://127.0.0.1:8000/api/admin/users/${userId}`, {
+                await axios.delete(`http://127.0.0.1:8000/api/users/${userId}`, {
                     headers: { 'Authorization': `Bearer ${token}` },
                 });
                 fetchUsers();
@@ -70,24 +67,26 @@ const UserManagement = () => {
         }
     };
 
-    const handleNewUserChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const handleNewUserChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
         setNewUser({ ...newUser, [e.target.name]: e.target.value });
     };
 
-    const handleAddNewInstructor = async (e: React.FormEvent) => {
+    const handleAddNewUser = async (e: React.FormEvent) => {
         e.preventDefault();
-        console.log('Attempting to add new instructor:', newUser);
-
         try {
             const token = localStorage.getItem('token');
-            await axios.post('http://127.0.0.1:8000/api/admin/instructors', newUser, {
+            const userData = {
+                ...newUser,
+                IsActive: newUser.Role === 'Admin', // Admins are active by default, instructors are not
+            };
+            await axios.post('http://127.0.0.1:8000/api/users', userData, {
                 headers: { 'Authorization': `Bearer ${token}` },
             });
             setIsModalOpen(false);
-            setNewUser({ Name: '', Email: '', Password: '' }); // Reset form
+            setNewUser({ Name: '', Email: '', Password: '', Role: 'Instructor' }); // Reset form
             fetchUsers();
         } catch (error) {
-            console.error('Failed to add new instructor:', error);
+            console.error('Failed to add new user:', error);
         }
     };
 
@@ -108,7 +107,7 @@ const UserManagement = () => {
                     className="flex items-center px-4 py-2 font-semibold text-white bg-blue-600 rounded-lg hover:bg-blue-700 transition-colors duration-300"
                 >
                     <Plus className="w-5 h-5 mr-2" />
-                    Add New Instructor
+                    Add New User
                 </button>
             </div>
             <div className="bg-white shadow-md rounded-lg overflow-hidden">
@@ -158,8 +157,8 @@ const UserManagement = () => {
             </div>
 
             <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)}>
-                <h3 className="text-lg font-medium leading-6 text-gray-900">Add New Instructor</h3>
-                <form onSubmit={handleAddNewInstructor} className="mt-4 space-y-4">
+                <h3 className="text-lg font-medium leading-6 text-gray-900">Add New User</h3>
+                <form onSubmit={handleAddNewUser} className="mt-4 space-y-4">
                     <input
                         type="text"
                         name="Name"
@@ -187,12 +186,21 @@ const UserManagement = () => {
                         className="w-full p-2 border rounded"
                         required
                     />
+                    <select
+                        name="Role"
+                        value={newUser.Role}
+                        onChange={handleNewUserChange}
+                        className="w-full p-2 border rounded"
+                    >
+                        <option value="Instructor">Instructor</option>
+                        <option value="Admin">Admin</option>
+                    </select>
                     <div className="flex justify-end">
                         <button
                             type="submit"
                             className="flex items-center px-4 py-2 font-semibold text-white bg-blue-600 rounded-lg hover:bg-blue-700"
                         >
-                            Add Instructor
+                            Add User
                         </button>
                     </div>
                 </form>

@@ -22,9 +22,9 @@ class Lesson extends Model
         'Title',
         'Content',
         'VideoUrl',
+        'AttachmentUrl',
         'EstimatedDuration',
         'Order',
-        'CreatedBy',
     ];
 
     protected $casts = [
@@ -34,20 +34,11 @@ class Lesson extends Model
         'Order' => 'integer',
         'CreatedAt' => 'datetime',
         'UpdatedAt' => 'datetime',
-        'CreatedBy' => 'integer',
     ];
 
     public function course(): BelongsTo
     {
         return $this->belongsTo(Course::class, 'CourseId', 'Id');
-    }
-
-    /**
-     * Get the user who created the lesson.
-     */
-    public function createdBy(): BelongsTo
-    {
-        return $this->belongsTo(User::class, 'CreatedBy', 'Id');
     }
 
     /**

@@ -1,24 +1,37 @@
 import React from 'react';
 import { NavLink, Outlet, useNavigate } from 'react-router-dom';
-import { LayoutDashboard, Book, BrainCircuit, BarChart, Users, LogOut } from 'lucide-react';
+import axios from 'axios';
+import { LayoutDashboard, Book, BrainCircuit, BarChart, Users, LogOut, User, Award } from 'lucide-react';
 
 const ManagementLayout = () => {
     const navigate = useNavigate();
     const user = JSON.parse(localStorage.getItem('user') || '{}');
+    const token = localStorage.getItem('token');
 
-    const handleLogout = () => {
-        localStorage.removeItem('token');
-        localStorage.removeItem('user');
-        navigate('/login');
+    const handleLogout = async () => {
+        try {
+            await axios.post('http://127.0.0.1:8000/api/auth/logout', {}, {
+                headers: {
+                    'Authorization': `Bearer ${token}`
+                }
+            });
+        } catch (error) {
+            console.error('Logout failed', error);
+        } finally {
+            localStorage.removeItem('token');
+            localStorage.removeItem('user');
+            navigate('/login');
+        }
     };
 
     let sidebarLinks = [
         { name: 'Dashboard', path: '/management/dashboard', icon: LayoutDashboard },
         { name: 'Course Management', path: '/management/courses', icon: Book, roles: ['Admin', 'Instructor'] },
-        { name: 'Lessons', path: '/management/lessons', icon: BrainCircuit, roles: ['Admin', 'Instructor'] },
         { name: 'Quizzes', path: '/management/quizzes', icon: BrainCircuit, roles: ['Admin', 'Instructor'] },
+        { name: 'Certificates', path: '/management/certificates', icon: Award, roles: ['Admin', 'Instructor', 'Student'] },
         { name: 'Analytics', path: '/management/analytics', icon: BarChart, roles: ['Admin'] },
         { name: 'User Management', path: '/management/users', icon: Users, roles: ['Admin'] },
+        { name: 'Profile', path: '/management/profile', icon: User, roles: ['Admin', 'Instructor'] },
     ];
 
     const userRole = user.Role;

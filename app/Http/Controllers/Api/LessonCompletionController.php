@@ -41,18 +41,13 @@ class LessonCompletionController extends Controller
     public function store(Request $request)
     {
         $validated = $request->validate([
-            // lessons PK is Id (PascalCase)
             'LessonId' => ['required', 'integer', 'exists:lessons,Id'],
-
-            // users PK is id (lowercase)
-            // If you want "current user only", see note below.
-            'UserId' => ['nullable', 'integer', 'exists:users,id'],
-
+            'UserId' => ['nullable', 'integer', 'exists:users,Id'],
             'CompletedDate' => ['nullable', 'date'],
         ]);
 
         // Default to authenticated user if UserId not provided
-        $userId = $validated['UserId'] ?? $request->user()->id;
+        $userId = $validated['UserId'] ?? $request->user()->Id;
 
         // Idempotent: one completion per (UserId, LessonId)
         $completion = LessonCompletion::where('UserId', $userId)
@@ -131,9 +126,9 @@ class LessonCompletionController extends Controller
 
     public function completedLessonsCount(Request $request)
     {
-        $userId = $request->user()->id;
+        $userId = $request->user()->Id;
         $count = LessonCompletion::where('UserId', $userId)->count();
 
-        return response()->json(['count' => $count]);
+        return response()->json(['CompletedLessonsCount' => $count]);
     }
 }
