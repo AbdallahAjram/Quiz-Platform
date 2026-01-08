@@ -37,26 +37,80 @@ class QuizAttemptController extends Controller
 
     public function store(Request $request)
     {
-        $data = $request->validate([
-            'QuizId' => ['required', 'integer', 'exists:quizzes,Id'],
-
-            // Optional (you can also compute these later when finishing attempt)
-            'AttemptDate' => ['nullable', 'date'],
+        $validatedData = $request->validate([
+            'QuizId' => 'required|integer|exists:quizzes,Id',
+            'Answers' => 'required|array',
+            'Answers.*.QuestionId' => 'required|integer|exists:questions,Id',
+            'Answers.*.SelectedOptionId' => 'required|integer|exists:answer_options,Id',
         ]);
 
-        $attempt = QuizAttempt::create([
-            'QuizId' => (int) $data['QuizId'],
-            'UserId' => (int) $request->user()->id,
-            'Score' => 0,
-            'AttemptDate' => $data['AttemptDate'] ?? now(),
-            'Duration' => null,
-            'IsPassed' => false,
-        ]);
+        $quizId = $validatedData['QuizId'];
+        $userAnswers = $validatedData['Answers'];
 
-        return response()->json([
-            'message' => 'Quiz attempt created successfully.',
-            'data' => $attempt,
-        ], 201);
+        $quiz = \App\Models\Quiz::with('questions.answerOptions')->findOrFail($quizId);
+        $user = $request->user();
+
+        $correctAnswersMap = [];
+        foreach ($quiz->questions as $question) {
+            foreach ($question->answerOptions as $option) {
+                if ($option->IsCorrect) {
+                    $correctAnswersMap[$question->Id] = $option->Id;
+                }
+            }
+        }
+
+        $correctCount = 0;
+        foreach ($userAnswers as $userAnswer) {
+            $questionId = $userAnswer['QuestionId'];
+            $selectedOptionId = $userAnswer['SelectedOptionId']; // Changed from AnswerOptionId
+
+            if (isset($correctAnswersMap[$questionId]) && $correctAnswersMap[$questionId] === $selectedOptionId) {
+                $correctCount++;
+            }
+        }
+
+        $totalQuestions = count($quiz->questions);
+        $score = ($totalQuestions > 0) ? ($correctCount / $totalQuestions) * 100 : 0;
+        $isPassed = $score >= $quiz->PassingScore;
+
+        try {
+            $attempt = null;
+            \Illuminate\Support\Facades\DB::transaction(function () use ($quiz, $user, $score, $isPassed, $userAnswers, &$attempt) {
+                $attempt = QuizAttempt::create([
+                    'QuizId' => $quiz->Id,
+                    'UserId' => $user->Id, // Use $user->Id consistently
+                    'Score' => $score,
+                    'AttemptDate' => now(),
+                    'IsPassed' => $isPassed,
+                ]);
+
+                $attemptAnswers = [];
+                foreach ($userAnswers as $userAnswer) {
+                    $attemptAnswers[] = [
+                        'QuizAttemptId' => $attempt->Id,
+                        'QuestionId' => $userAnswer['QuestionId'],
+                        'AnswerOptionId' => $userAnswer['SelectedOptionId'], // Store as AnswerOptionId in DB
+                        'CreatedAt' => now(),
+                        'UpdatedAt' => now(),
+                    ];
+                }
+                \App\Models\QuizAttemptAnswer::insert($attemptAnswers);
+            });
+
+            return response()->json([
+                'message' => 'Quiz submitted successfully.',
+                'data' => [
+                    'AttemptId' => $attempt->Id,
+                    'Score' => $score,
+                    'IsPassed' => $isPassed,
+                    'PassingScore' => $quiz->PassingScore,
+                ]
+            ], 201);
+
+        } catch (\Exception $e) {
+            \Illuminate\Support\Facades\Log::error('Quiz submission failed: ' . $e->getMessage());
+            return response()->json(['message' => 'An error occurred during quiz submission.'], 500);
+        }
     }
 
     public function show(string $id)

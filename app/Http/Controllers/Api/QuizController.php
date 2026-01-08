@@ -2,12 +2,15 @@
 
 namespace App\Http\Controllers\Api;
 
+use App\Http\Resources\QuizResource;
 use App\Http\Controllers\Controller;
 use App\Models\Quiz;
 use App\Models\Lesson;
 use App\Models\Course;
 use App\Models\Question;
 use App\Models\AnswerOption;
+use App\Models\LessonCompletion;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -23,14 +26,7 @@ class QuizController extends Controller
 
         $quiz = Quiz::where('CourseId', $courseId)->whereNull('LessonId')->with('questions.answerOptions')->first();
 
-        if (!$quiz) {
-            return response()->json(['message' => 'Quiz not found for this course.'], 404);
-        }
-
-        return response()->json([
-            'quiz' => $quiz,
-            'questions' => $quiz->questions,
-        ]);
+return new QuizResource($quiz);
     }
 
     public function storeOrUpdateByCourse(Request $request, $courseId)
@@ -179,10 +175,7 @@ class QuizController extends Controller
             return response()->json(['message' => 'Quiz not found for this lesson.'], 404);
         }
 
-        return response()->json([
-            'quiz' => $quiz,
-            'questions' => $quiz->questions,
-        ]);
+        return new QuizResource($quiz);
     }
 
     public function index(Request $request)
@@ -255,13 +248,38 @@ class QuizController extends Controller
 
     public function show(string $id)
     {
-        $quiz = Quiz::with(['questions.answerOptions'])->find($id);
+        $quiz = Quiz::with(['questions.answerOptions', 'course.lessons'])->findOrFail($id);
+        $user = Auth::user();
+
+        // Guardrail for Lesson Quizzes
+        if ($quiz->LessonId) {
+            $isCompleted = LessonCompletion::where('LessonId', $quiz->LessonId)
+                                           ->where('UserId', $user->Id)
+                                           ->exists();
+            if (!$isCompleted) {
+                return response()->json(['message' => 'You must complete the lesson before taking the quiz.'], 403);
+            }
+        }
+        // Guardrail for Course Quizzes (Final Exams)
+        else if ($quiz->CourseId && $quiz->course) {
+            $totalLessons = $quiz->course->lessons ? $quiz->course->lessons->count() : 0;
+
+            if ($totalLessons > 0) {
+                $completedLessons = LessonCompletion::whereIn('LessonId', $quiz->course->lessons->pluck('Id'))
+                                                    ->where('UserId', $user->Id)
+                                                    ->count();
+
+                if ($completedLessons < $totalLessons) {
+                    return response()->json(['message' => 'You must complete all lessons in the course before taking the final exam.'], 403);
+                }
+            }
+        }
 
         if (!$quiz) {
             return response()->json(['message' => 'Quiz not found.'], 404);
         }
 
-        return response()->json($quiz);
+        return new QuizResource($quiz);
     }
 
     public function update(Request $request, string $id)
