@@ -17,6 +17,7 @@ class LessonFactory extends Factory
             'Title' => $this->faker->sentence,
             'Content' => $this->faker->paragraph,
             'EstimatedDuration' => $this->faker->numberBetween(10, 60),
+            'Order' => $this->faker->numberBetween(1, 100),
         ];
     }
 }
