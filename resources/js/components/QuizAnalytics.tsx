@@ -48,15 +48,15 @@ const QuizAnalytics = () => {
     }
 
     return (
-        <div className="p-6 bg-gray-900 text-white rounded-lg shadow-lg">
+        <div className="p-6 bg-white text-gray-900 rounded-lg shadow-md">
             <h1 className="text-3xl font-bold mb-6 flex items-center"><BrainCircuit className="mr-3" /> Quiz Analytics</h1>
             <div className="overflow-x-auto">
-                <table className="min-w-full bg-gray-800 border border-gray-700 rounded-lg">
+                <table className="min-w-full bg-white border border-gray-200 rounded-lg">
                     <thead>
-                        <tr className="bg-gray-700">
-                            <th className="px-6 py-3 text-left text-sm font-semibold uppercase">Quiz Title</th>
-                            <th className="px-6 py-3 text-left text-sm font-semibold uppercase">Course</th>
-                            <th className="px-6 py-3 text-left text-sm font-semibold uppercase">Attempt Count</th>
+                        <tr className="bg-gray-100">
+                            <th className="px-6 py-3 text-left text-sm font-semibold uppercase text-gray-900">Quiz Title</th>
+                            <th className="px-6 py-3 text-left text-sm font-semibold uppercase text-gray-900">Course</th>
+                            <th className="px-6 py-3 text-left text-sm font-semibold uppercase text-gray-900">Attempt Count</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -64,7 +64,7 @@ const QuizAnalytics = () => {
                             <tr
                                 key={quiz.QuizId}
                                 onClick={() => handleQuizClick(quiz.QuizId)}
-                                className="hover:bg-gray-700 cursor-pointer border-b border-gray-700"
+                                className="hover:bg-gray-50 cursor-pointer border-b border-gray-200"
                             >
                                 <td className="px-6 py-4 whitespace-nowrap">{quiz.QuizTitle}</td>
                                 <td className="px-6 py-4 whitespace-nowrap">{quiz.CourseName}</td>
