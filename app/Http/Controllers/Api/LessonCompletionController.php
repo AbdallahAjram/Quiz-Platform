@@ -10,15 +10,8 @@ class LessonCompletionController extends Controller
 {
     public function index(Request $request)
     {
-        // Optional filters:
-        // ?UserId=1
-        // ?LessonId=10
-        // ?CourseId=3  (via lesson relation)
-        $query = LessonCompletion::query()->with(['lesson']);
-
-        if ($request->filled('UserId')) {
-            $query->where('UserId', (int) $request->input('UserId'));
-        }
+        $query = LessonCompletion::query()->with(['lesson'])
+            ->where('UserId', $request->user()->Id);
 
         if ($request->filled('LessonId')) {
             $query->where('LessonId', (int) $request->input('LessonId'));

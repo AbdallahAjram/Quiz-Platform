@@ -43,7 +43,9 @@ const ManagementLayout = () => {
                     <span className="text-white font-bold uppercase">Academy</span>
                 </div>
                 <nav className="mt-6">
-                    {sidebarLinks.map((link) => (
+                    {sidebarLinks
+                        .filter(link => user.Role === 'Admin' || link.name !== 'Users')
+                        .map((link) => (
                         <NavLink
                             key={link.name}
                             to={link.path}

@@ -52,7 +52,7 @@ const App = () => {
                 >
                     <Route index element={<ManagementDashboard />} />
                     <Route path="dashboard" element={<ManagementDashboard />} />
-                    <Route path="users" element={<UserManagement />} />
+                    <Route path="users" element={<ProtectedRoute roles={['Admin']}><UserManagement /></ProtectedRoute>} />
                     <Route path="courses" element={<CourseManagement />} />
                     <Route path="courses/create" element={<CourseForm />} />
                     <Route path="courses/edit/:Id" element={<EditCourse />} />
