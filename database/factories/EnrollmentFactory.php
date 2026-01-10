@@ -16,7 +16,7 @@ class EnrollmentFactory extends Factory
         return [
             'CourseId' => Course::factory(),
             'UserId' => User::factory(),
-            'EnrollmentDate' => now(),
+            'EnrolledAt' => now(),
         ];
     }
 }
