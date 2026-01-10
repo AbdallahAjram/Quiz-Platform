@@ -47,22 +47,22 @@ const QuizStudentStats = () => {
     }
 
     return (
-        <div className="p-6 bg-gray-900 text-white rounded-lg shadow-lg">
+        <div className="p-6 bg-white text-gray-900 rounded-lg shadow-md">
             <h1 className="text-3xl font-bold mb-6">Student Performance for: {quizTitle}</h1>
             <div className="overflow-x-auto">
-                <table className="min-w-full bg-gray-800 border border-gray-700 rounded-lg">
+                <table className="min-w-full bg-white border border-gray-200 rounded-lg">
                     <thead>
-                        <tr className="bg-gray-700">
-                            <th className="px-6 py-3 text-left text-sm font-semibold uppercase">Student Name</th>
-                            <th className="px-6 py-3 text-left text-sm font-semibold uppercase">Status</th>
-                            <th className="px-6 py-3 text-left text-sm font-semibold uppercase">Highest Score</th>
-                            <th className="px-6 py-3 text-left text-sm font-semibold uppercase">Last Attempt</th>
-                            <th className="px-6 py-3 text-left text-sm font-semibold uppercase">Actions</th>
+                        <tr className="bg-gray-50">
+                            <th className="px-6 py-3 text-left text-sm font-semibold uppercase text-gray-900">Student Name</th>
+                            <th className="px-6 py-3 text-left text-sm font-semibold uppercase text-gray-900">Status</th>
+                            <th className="px-6 py-3 text-left text-sm font-semibold uppercase text-gray-900">Highest Score</th>
+                            <th className="px-6 py-3 text-left text-sm font-semibold uppercase text-gray-900">Last Attempt</th>
+                            <th className="px-6 py-3 text-left text-sm font-semibold uppercase text-gray-900">Actions</th>
                         </tr>
                     </thead>
                     <tbody>
                         {stats.map((stat, index) => (
-                            <tr key={index} className="border-b border-gray-700">
+                            <tr key={index} className="border-b border-gray-200">
                                 <td className="px-6 py-4 whitespace-nowrap">{stat.StudentName}</td>
                                 <td className="px-6 py-4 whitespace-nowrap flex items-center">
                                     {stat.Status === 'Completed' ? <CheckCircle className="text-green-500 mr-2" /> : <XCircle className="text-red-500 mr-2" />}
