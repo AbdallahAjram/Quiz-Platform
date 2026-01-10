@@ -1,10 +1,11 @@
 import React from 'react';
-import { NavLink, Outlet, useNavigate } from 'react-router-dom';
+import { NavLink, Outlet, useNavigate, useLocation } from 'react-router-dom';
 import axios from 'axios';
 import { LayoutDashboard, Book, BrainCircuit, BarChart, Users, LogOut, User, Award } from 'lucide-react';
 
 const ManagementLayout = () => {
     const navigate = useNavigate();
+    const location = useLocation();
     const user = JSON.parse(localStorage.getItem('user') || '{}');
     const token = localStorage.getItem('token');
 
@@ -18,32 +19,28 @@ const ManagementLayout = () => {
         } catch (error) {
             console.error('Logout failed', error);
         } finally {
-            localStorage.removeItem('token');
             localStorage.removeItem('user');
+            localStorage.removeItem('token');
             navigate('/login');
         }
     };
 
-    let sidebarLinks = [
+    const sidebarLinks = [
         { name: 'Dashboard', path: '/management/dashboard', icon: LayoutDashboard },
-        { name: 'Course Management', path: '/management/courses', icon: Book, roles: ['Admin', 'Instructor'] },
-        { name: 'Quizzes', path: '/management/quizzes', icon: BrainCircuit, roles: ['Admin', 'Instructor'] },
-        { name: 'Certificates', path: '/management/certificates', icon: Award, roles: ['Admin', 'Instructor', 'Student'] },
-        { name: 'Analytics', path: '/management/analytics', icon: BarChart, roles: ['Admin'] },
-        { name: 'User Management', path: '/management/users', icon: Users, roles: ['Admin'] },
-        { name: 'Profile', path: '/management/profile', icon: User, roles: ['Admin', 'Instructor'] },
+        { name: 'Courses', path: '/management/courses', icon: Book },
+        { name: 'Quizzes', path: '/management/quizzes', icon: BrainCircuit },
+        { name: 'Analytics', path: '/management/analytics', icon: BarChart },
+        { name: 'Users', path: '/management/users', icon: Users },
+        { name: 'Profile', path: '/profile', icon: User },
+        { name: 'Certificates', path: '/certificates', icon: Award }
     ];
-
-    const userRole = user.Role;
-    sidebarLinks = sidebarLinks.filter(link => !link.roles || link.roles.includes(userRole));
-
 
     return (
         <div className="flex h-screen bg-gray-100">
             {/* Sidebar */}
-            <div className="w-64 bg-gray-800">
-                <div className="p-6">
-                    <h1 className="text-2xl font-bold text-white">Management</h1>
+            <div className="hidden md:flex flex-col w-64 bg-gray-800">
+                <div className="flex items-center justify-center h-16 bg-gray-900">
+                    <span className="text-white font-bold uppercase">Academy</span>
                 </div>
                 <nav className="mt-6">
                     {sidebarLinks.map((link) => (
