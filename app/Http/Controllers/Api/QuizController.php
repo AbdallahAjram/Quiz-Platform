@@ -24,9 +24,15 @@ class QuizController extends Controller
             return response()->json(['message' => 'Course not found.'], 404);
         }
 
-        $quiz = Quiz::where('CourseId', $courseId)->whereNull('LessonId')->with('questions.answerOptions')->first();
+        $userId = auth()->id();
+        $quiz = Quiz::where('CourseId', $courseId)
+            ->whereNull('LessonId')
+            ->withExists(['attempts as has_attempted' => function ($q) use ($userId) {
+                $q->where('UserId', $userId);
+            }])
+            ->first();
 
-return new QuizResource($quiz);
+        return response()->json(['quiz' => $quiz]);
     }
 
     public function storeOrUpdateByCourse(Request $request, $courseId)
@@ -248,7 +254,7 @@ return new QuizResource($quiz);
 
     public function show(string $id)
     {
-        $quiz = Quiz::with(['questions.answerOptions', 'course.lessons'])->findOrFail($id);
+        $quiz = Quiz::with(['questions.answerOptions'])->findOrFail($id);
         $user = Auth::user();
 
         // Guardrail for Lesson Quizzes
@@ -333,5 +339,71 @@ return new QuizResource($quiz);
         $quiz->delete();
 
         return response()->json(['message' => 'Quiz deleted successfully.']);
+    }
+
+    public function getQuizAnalytics(Request $request)
+    {
+        $user = Auth::user();
+        
+        $query = Quiz::with('course:Id,Title')
+            ->withCount('attempts');
+
+        if ($user->Role === 'Instructor') {
+            $query->whereHas('course', function ($q) use ($user) {
+                $q->where('CreatedBy', $user->Id);
+            });
+        }
+
+        $quizzes = $query->get();
+
+        $stats = $quizzes->map(function ($quiz) {
+            return [
+                'QuizId' => $quiz->Id,
+                'QuizTitle' => $quiz->Title,
+                'CourseName' => $quiz->course ? $quiz->course->Title : 'N/A',
+                'AttemptCount' => $quiz->attempts_count,
+            ];
+        });
+
+        return response()->json($stats);
+    }
+
+    public function getStudentStats(Request $request, $quizId)
+    {
+        $user = Auth::user();
+        $quiz = Quiz::with('course.enrollments.user')->findOrFail($quizId);
+
+        // Authorization Check
+        if ($user->Role === 'Instructor' && $quiz->course->CreatedBy !== $user->Id) {
+            return response()->json(['message' => 'Unauthorized'], 403);
+        }
+
+        $enrolledStudents = $quiz->course->enrollments->map(function ($enrollment) {
+            return $enrollment->user;
+        })->filter();
+
+        $stats = $enrolledStudents->map(function ($student) use ($quiz) {
+            $attempts = $quiz->attempts()->where('UserId', $student->Id)->get();
+            
+            $highestScore = null;
+            $lastAttemptDate = null;
+
+            if ($attempts->isNotEmpty()) {
+                $highestScore = $attempts->max('Score');
+                $lastAttemptDate = $attempts->max('created_at');
+            }
+
+            return [
+                'StudentName' => $student->Name,
+                'Status' => $attempts->isNotEmpty() ? 'Completed' : 'Not Started',
+                'HighestScore' => $highestScore,
+                'LastAttemptDate' => $lastAttemptDate,
+            ];
+        });
+
+        return response()->json([
+            'quizTitle' => $quiz->Title,
+            'stats' => $stats,
+        ]);
     }
 }
