@@ -30,9 +30,9 @@ const ManagementLayout = () => {
         { name: 'Courses', path: '/management/courses', icon: Book },
         { name: 'Quizzes', path: '/management/quizzes', icon: BrainCircuit },
         { name: 'Analytics', path: '/management/analytics', icon: BarChart },
+        { name: 'Certificates', path: '/certificates', icon: Award },
         { name: 'Users', path: '/management/users', icon: Users },
-        { name: 'Profile', path: '/profile', icon: User },
-        { name: 'Certificates', path: '/certificates', icon: Award }
+        { name: 'Profile', path: '/management/profile', icon: User }
     ];
 
     return (

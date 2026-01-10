@@ -18,7 +18,8 @@ use App\Http\Controllers\Api\{
     QuizAttemptController,
     QuizAttemptAnswerController,
     AdminController,
-    DashboardController
+    DashboardController,
+    AnalyticsController
 };
 
 // Health check
@@ -92,6 +93,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('quizzes/{id}', [QuizController::class, 'show'])->where('id', '[0-9]+');
 
     Route::middleware('role:Admin,Instructor')->group(function () {
+        Route::get('analytics/engagement-insights', [AnalyticsController::class, 'getEngagementInsights']);
         Route::get('quizzes/analytics', [QuizController::class, 'getQuizAnalytics']);
         Route::get('quizzes/{quizId}/students', [QuizController::class, 'getStudentStats']);
         Route::get('instructor/quizzes', [QuizController::class, 'getQuizAnalytics']);
