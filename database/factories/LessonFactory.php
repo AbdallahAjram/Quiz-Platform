@@ -16,6 +16,7 @@ class LessonFactory extends Factory
             'CourseId' => Course::factory(),
             'Title' => $this->faker->sentence,
             'Content' => $this->faker->paragraph,
+            'EstimatedDuration' => $this->faker->numberBetween(10, 60),
         ];
     }
 }
