@@ -14,7 +14,8 @@ class CourseFactory extends Factory
     {
         return [
             'Title' => $this->faker->sentence(3),
-            'Description' => $this->faker->paragraph,
+            'ShortDescription' => $this->faker->sentence(),
+            'LongDescription' => $this->faker->paragraph(),
             'CreatedBy' => User::factory(),
             'IsPublished' => $this->faker->boolean,
         ];
