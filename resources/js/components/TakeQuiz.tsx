@@ -45,6 +45,7 @@ const TakeQuiz = () => {
     const [isLoading, setIsLoading] = useState(true);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [toast, setToast] = useState<{ message: string, type: 'success' | 'error' } | null>(null);
+    const [redirectTimer, setRedirectTimer] = useState(5);
 
     // --- Data Fetching ---
     useEffect(() => {
@@ -61,7 +62,7 @@ const TakeQuiz = () => {
                     headers: { 'Authorization': `Bearer ${token}` },
                 });
                 
-                const fetchedQuiz = response.data.quiz;
+                const fetchedQuiz = response.data.data;
                 setQuiz(fetchedQuiz);
 
                 // --- TIMER ACTIVATION ---
@@ -86,6 +87,23 @@ const TakeQuiz = () => {
     }, [quizId, navigate]);
 
     // --- Timer Countdown Logic ---
+    useEffect(() => {
+        if (result) {
+            const timer = setInterval(() => {
+                setRedirectTimer(prev => {
+                    if (prev <= 1) {
+                        clearInterval(timer);
+                        navigate('/dashboard');
+                        return 0;
+                    }
+                    return prev - 1;
+                });
+            }, 1000);
+
+            return () => clearInterval(timer);
+        }
+    }, [result, navigate]);
+
     useEffect(() => {
         if (isSubmitting || result) return; // Stop timer if submitting or finished
         if (timeLeft === 0) {
@@ -191,15 +209,16 @@ const TakeQuiz = () => {
                         ) : (
                             <p className="text-2xl text-red-300 mb-8">You did not pass. Better luck next time!</p>
                         )}
-                        <button onClick={() => navigate('/dashboard/courses')} className="bg-gray-600 hover:bg-gray-700 text-white font-bold py-3 px-6 rounded-lg">
-                            Back to Courses
+                        <button onClick={() => navigate('/dashboard')} className="bg-gray-600 hover:bg-gray-700 text-white font-bold py-3 px-6 rounded-lg">
+                            Back to Dashboard
                         </button>
+                        <p className="text-sm text-gray-400 mt-4">Redirecting to dashboard in {redirectTimer} seconds...</p>
                     </div>
                 ) : (
                     <div className="bg-black bg-opacity-50 backdrop-blur-lg p-6 sm:p-8 rounded-xl shadow-2xl text-white">
                         <div className="flex justify-between items-center mb-4">
                             <h1 className="text-2xl sm:text-3xl font-bold">{quiz.Title}</h1>
-                            <div className="text-xl sm:text-2xl font-mono bg-white bg-opacity-20 px-4 py-2 rounded-lg">
+                            <div className="text-xl sm:text-2xl font-mono bg-gray-900 bg-opacity-70 text-blue-400 px-4 py-2 rounded-lg border border-blue-400">
                                 {formatTime(timeLeft)}
                             </div>
                         </div>
@@ -219,7 +238,7 @@ const TakeQuiz = () => {
                                     {/* --- ANSWER OPTIONS MAPPING --- */}
                                     {currentQuestion.answerOptions && currentQuestion.answerOptions.length > 0 ? (
                                         currentQuestion.answerOptions.map(option => (
-                                            <label key={option.Id} className={`block w-full text-left p-4 rounded-lg cursor-pointer transition-all border-2 ${selectedAnswers[currentQuestion.Id] === option.Id ? 'bg-blue-500 border-blue-300' : 'bg-white bg-opacity-10 hover:bg-opacity-20 border-transparent'}`}>
+                                            <label key={option.Id} className={`block w-full text-left p-4 rounded-lg cursor-pointer transition-all transform hover:scale-105 border-2 ${selectedAnswers[currentQuestion.Id] === option.Id ? 'bg-blue-500 border-blue-300' : 'bg-gray-700 hover:bg-gray-600 border-transparent'}`}>
                                                 <input
                                                     type="radio"
                                                     name={`question-${currentQuestion.Id}`}

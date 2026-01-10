@@ -58,4 +58,12 @@ class Lesson extends Model
         // comments.LessonId -> lessons.Id
         return $this->hasMany(Comment::class, 'LessonId', 'Id');
     }
+
+    /**
+     * Get the quiz for the lesson.
+     */
+    public function quiz(): \Illuminate\Database\Eloquent\Relations\HasOne
+    {
+        return $this->hasOne(Quiz::class, 'LessonId', 'Id');
+    }
 }

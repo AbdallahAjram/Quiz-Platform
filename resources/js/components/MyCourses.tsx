@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { BookOpen } from 'lucide-react';
 import axios from 'axios';
+import { Link } from 'react-router-dom';
 
 interface Course {
     Id: number;
@@ -8,6 +9,9 @@ interface Course {
     ShortDescription: string;
     Category: string;
     Difficulty: string;
+    totalLessonsCount: number;
+    completedLessonsCount: number;
+    courseQuiz: { Id: number } | null;
 }
 
 
@@ -18,9 +22,12 @@ const CourseCard = ({ course }: { course: Course }) => {
         Advanced: 'text-red-500',
     };
 
+    const allLessonsCompleted = course.totalLessonsCount > 0 && course.totalLessonsCount === course.completedLessonsCount;
+    const progress = course.totalLessonsCount > 0 ? (course.completedLessonsCount / course.totalLessonsCount) * 100 : 0;
+
     return (
-        <div className="bg-white rounded-lg shadow-lg overflow-hidden transform hover:-translate-y-1 transition-transform duration-300">
-            <div className="p-6">
+        <div className="bg-white rounded-lg shadow-lg overflow-hidden transform hover:-translate-y-1 transition-transform duration-300 flex flex-col">
+            <div className="p-6 flex-grow">
                 <div className="flex items-center mb-4">
                     <div className="p-3 bg-blue-100 rounded-full mr-4">
                         <BookOpen className="w-6 h-6 text-blue-500" />
@@ -33,10 +40,22 @@ const CourseCard = ({ course }: { course: Course }) => {
                 <p className="text-gray-600 mb-4 h-12 overflow-hidden">{course.ShortDescription}</p>
                 <div className="flex justify-between items-center mb-4 text-sm">
                     <span className={`font-semibold ${difficultyColor[course.Difficulty] || 'text-gray-500'}`}>{course.Difficulty}</span>
+                    <span className="text-gray-600">{course.completedLessonsCount} / {course.totalLessonsCount} lessons</span>
                 </div>
-                <Link to={`/courses/${course.Id}/lessons`} className="w-full mt-6 px-4 py-2 text-center font-semibold text-white bg-blue-600 rounded-lg hover:bg-blue-700">
-                    View Course
-                </Link>
+                <div className="w-full bg-gray-200 rounded-full h-2.5 dark:bg-gray-700">
+                    <div className="bg-blue-600 h-2.5 rounded-full" style={{ width: `${progress}%` }}></div>
+                </div>
+            </div>
+            <div className="p-6 bg-gray-50">
+                {allLessonsCompleted && course.courseQuiz ? (
+                     <Link to={`/quizzes/take/${course.courseQuiz.Id}`} className="w-full block text-center mt-2 px-4 py-2 font-semibold text-white bg-indigo-600 rounded-lg hover:bg-indigo-700">
+                        Take Final Quiz
+                    </Link>
+                ) : (
+                    <Link to={`/courses/${course.Id}/lessons`} className="w-full block text-center mt-2 px-4 py-2 font-semibold text-white bg-blue-600 rounded-lg hover:bg-blue-700">
+                        View Course
+                    </Link>
+                )}
             </div>
         </div>
     );

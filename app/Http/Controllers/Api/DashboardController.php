@@ -60,4 +60,15 @@ class DashboardController extends Controller
             'RecentActivity' => $recentActivity,
         ]);
     }
+
+    public function getStudentAverageQuizScore(Request $request)
+    {
+        $user = Auth::user();
+
+        $averageScore = QuizAttempt::where('UserId', $user->Id)->avg('Score');
+
+        return response()->json([
+            'AverageQuizScore' => $averageScore ?? null
+        ]);
+    }
 }

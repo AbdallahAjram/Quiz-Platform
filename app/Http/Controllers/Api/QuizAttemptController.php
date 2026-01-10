@@ -87,9 +87,9 @@ class QuizAttemptController extends Controller
                 $attemptAnswers = [];
                 foreach ($userAnswers as $userAnswer) {
                     $attemptAnswers[] = [
-                        'QuizAttemptId' => $attempt->Id,
+                        'AttemptId' => $attempt->Id,
                         'QuestionId' => $userAnswer['QuestionId'],
-                        'AnswerOptionId' => $userAnswer['SelectedOptionId'], // Store as AnswerOptionId in DB
+                        'AnswerId' => $userAnswer['SelectedOptionId'],
                         'CreatedAt' => now(),
                         'UpdatedAt' => now(),
                     ];
@@ -105,7 +105,7 @@ class QuizAttemptController extends Controller
                     'IsPassed' => $isPassed,
                     'PassingScore' => $quiz->PassingScore,
                 ]
-            ], 201);
+            ], 200);
 
         } catch (\Exception $e) {
             \Illuminate\Support\Facades\Log::error('Quiz submission failed: ' . $e->getMessage());

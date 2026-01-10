@@ -5,7 +5,14 @@ import Toast from './Toast';
 import { storage } from '../firebase'; // Assuming firebase.ts is in ../
 import { ref, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage';
 import { v4 as uuidv4 } from 'uuid';
-import { Trash, Pencil } from 'lucide-react';
+import { Trash, Pencil, Brain } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+
+interface Quiz {
+    Id: number;
+    Title: string;
+    PassingScore: number;
+}
 
 interface Lesson {
     Id: number;
@@ -15,6 +22,7 @@ interface Lesson {
     Order: number;
     EstimatedDuration: number;
     AttachmentUrl?: string;
+    quiz?: Quiz | null;
 }
 
 const LessonManagement = () => {
@@ -31,6 +39,15 @@ const LessonManagement = () => {
     });
     const [editingLesson, setEditingLesson] = useState<Lesson | null>(null);
     const [attachment, setAttachment] = useState<File | null>(null);
+    const navigate = useNavigate();
+
+    const handleManageCourseQuiz = () => {
+        navigate(`/management/quizzes/course/${courseId}`);
+    };
+
+    const handleManageQuiz = (lessonId: number) => {
+        navigate(`/management/quizzes/${lessonId}`);
+    };
 
     const fetchLessons = async () => {
         try {
@@ -169,7 +186,12 @@ const LessonManagement = () => {
             <h1 className="text-2xl font-bold text-gray-900 mb-6">Manage Lessons</h1>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                 <div>
-                    <h2 className="text-xl font-bold mb-4">{editingLesson ? 'Edit Lesson' : 'Create New Lesson'}</h2>
+                    <div className="flex justify-between items-center mb-4">
+                        <h2 className="text-xl font-bold">{editingLesson ? 'Edit Lesson' : 'Create New Lesson'}</h2>
+                        <button onClick={handleManageCourseQuiz} className="px-4 py-2 text-sm font-semibold text-white bg-purple-600 rounded-lg hover:bg-purple-700">
+                            Manage Course-Level Quiz
+                        </button>
+                    </div>
                     <form onSubmit={handleCreateOrUpdateLesson} className="space-y-4">
                         <input name="Title" value={editingLesson?.Title || newLesson.Title} onChange={handleNewLessonChange} placeholder="Lesson Title" required className="w-full p-2 border rounded" />
                         <textarea name="Content" value={editingLesson?.Content || newLesson.Content} onChange={handleNewLessonChange} placeholder="Lesson Content" required className="w-full p-2 border rounded" />
@@ -200,6 +222,13 @@ const LessonManagement = () => {
                                     <p>Order: {lesson.Order}</p>
                                 </div>
                                 <div className="flex space-x-2">
+                                    <button 
+                                        onClick={() => handleManageQuiz(lesson.Id)} 
+                                        className={`p-2 hover:text-purple-600 ${lesson.quiz ? 'text-blue-500' : 'text-gray-600'}`}
+                                        title={lesson.quiz ? 'Edit Quiz' : 'Create Quiz'}
+                                    >
+                                        <Brain size={20} />
+                                    </button>
                                     <button onClick={() => handleEdit(lesson)} className="p-2 text-gray-600 hover:text-blue-600">
                                         <Pencil size={20} />
                                     </button>

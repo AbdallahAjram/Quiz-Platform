@@ -40,7 +40,12 @@ class LessonController extends Controller
 
     public function getLessonsForCourse($CourseId)
     {
-        $lessons = Lesson::where('CourseId', $CourseId)->orderBy('Order')->get();
+        $userId = auth()->id();
+        $lessons = Lesson::with(['quiz' => function ($query) use ($userId) {
+            $query->withExists(['attempts as has_attempted' => function ($q) use ($userId) {
+                $q->where('UserId', $userId);
+            }]);
+        }])->where('CourseId', $CourseId)->orderBy('Order')->get();
         return response()->json($lessons);
     }
 

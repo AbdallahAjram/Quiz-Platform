@@ -76,4 +76,9 @@ public function certificates() {
     return $this->hasMany(Certificate::class, 'CourseId', 'Id');
 }
 
+public function completions(): \Illuminate\Database\Eloquent\Relations\HasManyThrough
+{
+    return $this->hasManyThrough(LessonCompletion::class, Lesson::class, 'CourseId', 'LessonId', 'Id', 'Id');
+}
+
 }

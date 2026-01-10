@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\Enrollment;
+use App\Models\LessonCompletion;
 use Illuminate\Http\Request;
 use Illuminate\Database\QueryException;
 
@@ -132,11 +133,37 @@ class EnrollmentController extends Controller
     {
         $userId = $request->user()->Id;
 
-        $enrollments = Enrollment::where('UserId', $userId)->with('course')->get();
+        $enrollments = Enrollment::where('UserId', $userId)->with([
+            'course' => function ($query) use ($userId) {
+                $query->withCount('lessons');
+                $query->withCount(['completions as completed_lessons_count' => function ($q) use ($userId) {
+                    $q->where('UserId', $userId);
+                }]);
+                $query->with(['quizzes as course_quiz' => function($q) {
+                    $q->whereNull('LessonId')->select('Id', 'CourseId'); // Select only what's needed
+                }]);
+            }
+        ])->get();
 
         $courses = $enrollments->map(function ($enrollment) {
-            return $enrollment->course;
-        });
+            if (!$enrollment->course) {
+                return null;
+            }
+            $course = $enrollment->course;
+            
+            // Rename for consistency.
+            $course->totalLessonsCount = $course->lessons_count;
+            $course->completedLessonsCount = $course->completed_lessons_count;
+            
+            // The quiz relationship will be an array, we want the object or null
+            $course->courseQuiz = $course->course_quiz->first();
+
+            unset($course->lessons_count);
+            unset($course->completed_lessons_count);
+            unset($course->course_quiz);
+
+            return $course;
+        })->filter()->values();
 
         return response()->json($courses);
     }

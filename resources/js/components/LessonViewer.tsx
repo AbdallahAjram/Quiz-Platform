@@ -3,12 +3,19 @@ import axios from 'axios';
 import { useParams, Link } from 'react-router-dom';
 import Toast from './Toast';
 
+interface Quiz {
+    Id: number;
+    Title: string;
+    has_attempted: boolean;
+}
+
 interface Lesson {
     Id: number;
     Title: string;
     Content: string;
     VideoUrl: string;
     AttachmentUrl?: string;
+    quiz?: Quiz | null;
 }
 
 interface LessonCompletion {
@@ -20,6 +27,7 @@ const LessonViewer = () => {
     const [lessons, setLessons] = useState<Lesson[]>([]);
     const [currentLesson, setCurrentLesson] = useState<Lesson | null>(null);
     const [completions, setCompletions] = useState<LessonCompletion[]>([]);
+    const [courseQuiz, setCourseQuiz] = useState<Quiz | null>(null);
     const [toast, setToast] = useState<{ message: string, type: 'success' | 'error' } | null>(null);
     const [isLoading, setIsLoading] = useState(true);
 
@@ -28,17 +36,21 @@ const LessonViewer = () => {
             setIsLoading(true);
             try {
                 const token = localStorage.getItem('token');
-                const [lessonsResponse, completionsResponse] = await Promise.all([
+                const [lessonsResponse, completionsResponse, courseQuizResponse] = await Promise.all([
                     axios.get(`http://127.0.0.1:8000/api/courses/${courseId}/lessons`, {
                         headers: { 'Authorization': `Bearer ${token}` },
                     }),
                     axios.get(`http://127.0.0.1:8000/api/lesson-completions?CourseId=${courseId}`, {
+                        headers: { 'Authorization': `Bearer ${token}` },
+                    }),
+                    axios.get(`http://127.0.0.1:8000/api/courses/${courseId}/quiz`, {
                         headers: { 'Authorization': `Bearer ${token}` },
                     })
                 ]);
 
                 setLessons(lessonsResponse.data);
                 setCompletions(completionsResponse.data.data);
+                setCourseQuiz(courseQuizResponse.data.quiz);
 
                 const targetLessonId = lessonId ? parseInt(lessonId) : lessonsResponse.data[0]?.Id;
                 if (targetLessonId) {
@@ -48,7 +60,14 @@ const LessonViewer = () => {
                 }
 
             } catch (error) {
-                setToast({ message: 'Failed to fetch lesson data.', type: 'error' });
+                const isQuizError = axios.isAxiosError(error) && error.config.url?.includes('/quiz');
+                const isAcceptableError = error.response?.status === 404 || error.response?.status === 403;
+
+                if (isQuizError && isAcceptableError) {
+                    setCourseQuiz(null); // It's okay if a quiz doesn't exist or is forbidden, lessons should still load.
+                } else {
+                    setToast({ message: 'Failed to fetch lesson data.', type: 'error' });
+                }
             } finally {
                 setIsLoading(false);
             }
@@ -127,6 +146,38 @@ const LessonViewer = () => {
                         </Link>
                     ))}
                 </nav>
+                {courseQuiz && (
+                    <div className="p-4 border-t">
+                        <h3 className="text-lg font-bold mb-2 text-center">Final Exam</h3>
+                        {lessons.length > 0 && completions.length >= lessons.length ? (
+                            courseQuiz.has_attempted ? (
+                                <button
+                                    disabled
+                                    className="w-full px-4 py-3 font-bold text-white bg-green-600 rounded-lg cursor-not-allowed"
+                                >
+                                    Exam Completed
+                                </button>
+                            ) : (
+                                <Link
+                                    to={`/quizzes/take/${courseQuiz.Id}`}
+                                    className="w-full text-center block px-4 py-3 font-bold text-white bg-green-600 rounded-lg hover:bg-green-700"
+                                >
+                                    Take Final Exam
+                                </Link>
+                            )
+                        ) : (
+                            <div className="text-center">
+                                <button
+                                    disabled
+                                    className="w-full px-4 py-3 font-bold text-white bg-gray-400 rounded-lg cursor-not-allowed"
+                                >
+                                    Take Final Exam
+                                </button>
+                                <p className="text-xs text-gray-500 mt-2">Complete all lessons to unlock the final exam.</p>
+                            </div>
+                        )}
+                    </div>
+                )}
             </div>
             <div className="flex-1 p-8 overflow-y-auto">
                 {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
@@ -161,18 +212,53 @@ const LessonViewer = () => {
                             </div>
                         )}
 
-                        <div className="mt-8">
-                            {isCompleted(currentLesson) ? (
-                                <span className="inline-block px-6 py-2 font-semibold text-white bg-green-500 rounded-lg cursor-not-allowed">
-                                    ✓ Completed
-                                </span>
-                            ) : (
-                                <button
-                                    onClick={handleMarkAsCompleted}
-                                    className="px-6 py-2 font-semibold text-white bg-green-600 rounded-lg hover:bg-green-700"
-                                >
-                                    Mark as Completed
-                                </button>
+                        <div className="mt-8 space-y-4">
+                            <div>
+                                {isCompleted(currentLesson) ? (
+                                    <span className="inline-block px-6 py-2 font-semibold text-white bg-green-500 rounded-lg cursor-not-allowed">
+                                        ✓ Completed
+                                    </span>
+                                ) : (
+                                    <button
+                                        onClick={handleMarkAsCompleted}
+                                        className="px-6 py-2 font-semibold text-white bg-green-600 rounded-lg hover:bg-green-700"
+                                    >
+                                        Mark as Completed
+                                    </button>
+                                )}
+                            </div>
+
+                            {currentLesson.quiz && (
+                                <div className="p-4 border-t border-gray-200">
+                                    <h3 className="text-lg font-bold mb-2">Lesson Quiz</h3>
+                                    {isCompleted(currentLesson) ? (
+                                        currentLesson.quiz.has_attempted ? (
+                                            <button
+                                                disabled
+                                                className="px-8 py-3 font-bold text-white bg-green-600 rounded-lg cursor-not-allowed text-lg"
+                                            >
+                                                Quiz Completed
+                                            </button>
+                                        ) : (
+                                            <Link 
+                                                to={`/quizzes/take/${currentLesson.quiz.Id}`}
+                                                className="px-8 py-3 font-bold text-white bg-indigo-600 rounded-lg hover:bg-indigo-700 text-lg"
+                                            >
+                                                Take the Quiz!
+                                            </Link>
+                                        )
+                                    ) : (
+                                        <div className="flex items-center space-x-3">
+                                            <button
+                                                disabled
+                                                className="px-8 py-3 font-bold text-white bg-gray-400 rounded-lg cursor-not-allowed text-lg"
+                                            >
+                                                Take the Quiz!
+                                            </button>
+                                            <p className="text-gray-500">Complete the lesson to unlock the quiz.</p>
+                                        </div>
+                                    )}
+                                </div>
                             )}
                         </div>
                     </>

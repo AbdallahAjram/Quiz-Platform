@@ -19,21 +19,26 @@ const StatCard = ({ title, value, icon }: { title: string, value: string, icon: 
 const DashboardHome = () => {
     const [enrolledCoursesCount, setEnrolledCoursesCount] = useState(0);
     const [completedLessonsCount, setCompletedLessonsCount] = useState(0);
+    const [averageScore, setAverageScore] = useState<number | null>(null);
 
     useEffect(() => {
         const fetchCounts = async () => {
             try {
                 const token = localStorage.getItem('token');
-                const [enrolledCoursesResponse, completedLessonsResponse] = await Promise.all([
+                const [enrolledCoursesResponse, completedLessonsResponse, averageScoreResponse] = await Promise.all([
                     axios.get('http://127.0.0.1:8000/api/student/enrolled-courses-count', {
                         headers: { 'Authorization': `Bearer ${token}` },
                     }),
                     axios.get('http://127.0.0.1:8000/api/student/completed-lessons-count', {
                         headers: { 'Authorization': `Bearer ${token}` },
                     }),
+                    axios.get('http://127.0.0.1:8000/api/student/average-quiz-score', {
+                        headers: { 'Authorization': `Bearer ${token}` },
+                    }),
                 ]);
                 setEnrolledCoursesCount(enrolledCoursesResponse.data.EnrolledCoursesCount);
                 setCompletedLessonsCount(completedLessonsResponse.data.CompletedLessonsCount);
+                setAverageScore(averageScoreResponse.data.AverageQuizScore);
             } catch (error) {
                 console.error('Failed to fetch dashboard counts:', error);
             }
@@ -47,7 +52,7 @@ const DashboardHome = () => {
             <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
                 <StatCard title="Enrolled Courses" value={enrolledCoursesCount.toString()} icon={<BookOpen className="w-6 h-6" />} />
                 <StatCard title="Completed Lessons" value={completedLessonsCount.toString()} icon={<CheckSquare className="w-6 h-6" />} />
-                <StatCard title="Average Quiz Score" value="N/A" icon={<BarChart3 className="w-6 h-6" />} />
+                <StatCard title="Average Quiz Score" value={averageScore !== null ? `${Number(averageScore).toFixed(0)}%` : 'N/A'} icon={<BarChart3 className="w-6 h-6" />} />
             </div>
 
             <div className="flex items-center justify-center mt-12">

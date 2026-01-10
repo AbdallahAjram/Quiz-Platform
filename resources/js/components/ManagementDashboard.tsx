@@ -78,7 +78,7 @@ const ManagementDashboard = () => {
                 <StatCard icon={<BookOpen size={24} />} label="Total Courses" value={stats.CourseCount} color="bg-blue-200 text-blue-600" />
                 <StatCard icon={<Users size={24} />} label="Total Students" value={stats.StudentCount} color="bg-green-200 text-green-600" />
                 <StatCard icon={<BarChart2 size={24} />} label="Total Lessons" value={stats.LessonCount} color="bg-yellow-200 text-yellow-600" />
-                <StatCard icon={<Award size={24} />} label="Avg. Quiz Score" value={`${(stats.AverageQuizScore || 0).toFixed(1)}%`} color="bg-indigo-200 text-indigo-600" />
+                <StatCard icon={<Award size={24} />} label="Avg. Quiz Score" value={`${(Number(stats.AverageQuizScore) || 0).toFixed(1)}%`} color="bg-indigo-200 text-indigo-600" />
             </div>
 
             <div>
@@ -90,7 +90,7 @@ const ManagementDashboard = () => {
                                 <li key={enrollment.Id} className="py-4 flex justify-between items-center">
                                     <div>
                                         <p className="font-semibold text-gray-800">
-                                            <span className="font-bold">{enrollment.user.Name}</span> enrolled in <span className="font-bold">{enrollment.course.Title}</span>
+                                            <span className="font-bold">{enrollment.user?.Name || 'Unknown User'}</span> enrolled in <span className="font-bold">{enrollment.course?.Title || 'Unknown Course'}</span>
                                         </p>
                                         <p className="text-sm text-gray-500">{new Date(enrollment.EnrolledAt).toLocaleDateString()}</p>
                                     </div>
