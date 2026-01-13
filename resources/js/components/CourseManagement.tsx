@@ -26,6 +26,15 @@ const CourseCard = ({ course, user, onTogglePublish, onDelete }: { course: Cours
         navigate(`/management/courses/${course.Id}/lessons`);
     };
 
+    const getDifficultyClass = (difficulty: string) => {
+        switch (difficulty) {
+            case 'Beginner': return 'bg-green-500';
+            case 'Intermediate': return 'bg-yellow-500';
+            case 'Advanced': return 'bg-red-500';
+            default: return 'bg-gray-400';
+        }
+    };
+
     return (
         <div className="bg-white p-4 rounded-lg shadow-md border border-gray-100 cursor-pointer" onClick={handleCardClick}>
             <div className="flex justify-between items-start">
@@ -49,11 +58,8 @@ const CourseCard = ({ course, user, onTogglePublish, onDelete }: { course: Cours
             )}
             <div className="flex justify-between items-center text-xs">
                 <span className="font-semibold text-gray-600">{course.Category}</span>
-                <span className={`px-2 py-1 font-semibold text-white rounded-full ${
-                    course.Difficulty === 'Beginner' ? 'bg-green-500' :
-                    course.Difficulty === 'Intermediate' ? 'bg-yellow-500' : 'bg-red-500'
-                }`}>
-                    {course.Difficulty}
+                <span className={`px-2 py-1 font-semibold text-white rounded-full ${getDifficultyClass(course.Difficulty)}`}>
+                    {course.Difficulty || 'Unassigned Difficulty'}
                 </span>
             </div>
             <div className="flex justify-between items-center mt-2 text-xs">

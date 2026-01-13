@@ -98,6 +98,12 @@ class QuestionController extends Controller
             return response()->json(['message' => 'Question not found.'], 404);
         }
 
+        if ($question->ImagePath) {
+            if (file_exists(storage_path('app/public/' . $question->ImagePath))) {
+                unlink(storage_path('app/public/' . $question->ImagePath));
+            }
+        }
+
         $question->delete();
 
         return response()->json(['message' => 'Question deleted successfully.']);

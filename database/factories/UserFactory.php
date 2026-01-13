@@ -26,13 +26,4 @@ class UserFactory extends Factory
             'IsActive' => true,
         ];
     }
-
-    public function instructor(): Factory
-    {
-        return $this->state(function (array $attributes) {
-            return [
-                'Role' => 'Instructor',
-            ];
-        });
-    }
 }

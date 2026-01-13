@@ -93,21 +93,20 @@ class CertificateController extends Controller
             }
         }
 
-        // 3) Must pass at least one quiz attempt (if course has quizzes)
-        $totalQuizzes = Quiz::where('CourseId', $courseId)->count();
+        // 3) Must pass all quizzes in the course, considering the highest score for each.
+        $quizzes = Quiz::where('CourseId', $courseId)->get();
 
-        if ($totalQuizzes > 0) {
-            $passedAny = QuizAttempt::query()
-                ->join('quizzes', 'quizzes.Id', '=', 'quiz_attempts.QuizId')
-                ->where('quizzes.CourseId', $courseId)
-                ->where('quiz_attempts.UserId', $userId)
-                ->where('quiz_attempts.IsPassed', true)
-                ->exists();
+        if ($quizzes->isNotEmpty()) {
+            foreach ($quizzes as $quiz) {
+                $highestScore = QuizAttempt::where('QuizId', $quiz->Id)
+                    ->where('UserId', $userId)
+                    ->max('Score');
 
-            if (!$passedAny) {
-                return response()->json([
-                    'message' => 'You must pass at least one quiz in this course before generating a certificate.'
-                ], 422);
+                if ($highestScore === null || $highestScore < $quiz->PassingScore) {
+                    return response()->json([
+                        'message' => "You must pass all quizzes in the course. Failed or missing attempt for quiz: {$quiz->Title}",
+                    ], 422);
+                }
             }
         }
 

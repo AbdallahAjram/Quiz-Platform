@@ -4,7 +4,10 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\QuizAttempt;
+use App\Models\LessonCompletion;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 
 class QuizAttemptController extends Controller
 {
@@ -75,7 +78,7 @@ class QuizAttemptController extends Controller
 
         try {
             $attempt = null;
-            \Illuminate\Support\Facades\DB::transaction(function () use ($quiz, $user, $score, $isPassed, $userAnswers, &$attempt) {
+            DB::transaction(function () use ($quiz, $user, $score, $isPassed, $userAnswers, &$attempt) {
                 $attempt = QuizAttempt::create([
                     'QuizId' => $quiz->Id,
                     'UserId' => $user->Id, // Use $user->Id consistently
@@ -95,6 +98,13 @@ class QuizAttemptController extends Controller
                     ];
                 }
                 \App\Models\QuizAttemptAnswer::insert($attemptAnswers);
+
+                if ($isPassed && $quiz->LessonId) {
+                    LessonCompletion::firstOrCreate([
+                        'UserId' => $user->Id,
+                        'LessonId' => $quiz->LessonId,
+                    ]);
+                }
             });
 
             return response()->json([
@@ -108,7 +118,7 @@ class QuizAttemptController extends Controller
             ], 200);
 
         } catch (\Exception $e) {
-            \Illuminate\Support\Facades\Log::error('Quiz submission failed: ' . $e->getMessage());
+            Log::error('Quiz submission failed: ' . $e->getMessage());
             return response()->json(['message' => 'An error occurred during quiz submission.'], 500);
         }
     }
@@ -123,11 +133,61 @@ class QuizAttemptController extends Controller
 
         // Restrict to owner (recommended)
         if ((int) $attempt->UserId !== (int) auth()->id()) {
-            return response()->json(['message' => 'Forbidden.'], 403);
+            // Allow admin/instructor to view
+            $user = auth()->user();
+            if ($user->Role !== 'Admin') {
+                $quiz = $attempt->quiz()->with('course')->first();
+                if (!$quiz || $quiz->course->CreatedBy !== $user->Id) {
+                    return response()->json(['message' => 'Forbidden.'], 403);
+                }
+            }
         }
 
         return response()->json(['data' => $attempt]);
     }
+
+    public function getAttemptDetails($attemptId)
+    {
+        $attempt = QuizAttempt::with([
+            'quiz.questions.answerOptions',
+            'answers'
+        ])->findOrFail($attemptId);
+
+        // Authorization: User must be the one who took the quiz, or an admin, or the course instructor
+        $user = auth()->user();
+        if ($user->Id !== $attempt->UserId && $user->Role !== 'Admin') {
+            $course = $attempt->quiz->course;
+            if ($user->Role !== 'Instructor' || $course->CreatedBy !== $user->Id) {
+                return response()->json(['message' => 'This action is unauthorized.'], 403);
+            }
+        }
+        
+        $questions = $attempt->quiz->questions->map(function ($question) use ($attempt) {
+            $userAnswer = $attempt->answers->firstWhere('QuestionId', $question->Id);
+            $correctAnswer = $question->answerOptions->firstWhere('IsCorrect', true);
+
+            return [
+                'QuestionId' => $question->Id,
+                'QuestionText' => $question->QuestionText,
+                'AnswerOptions' => $question->answerOptions->map(function ($option) {
+                    return [
+                        'Id' => $option->Id,
+                        'AnswerText' => $option->AnswerText,
+                    ];
+                }),
+                'UserAnswerId' => $userAnswer ? $userAnswer->AnswerId : null,
+                'CorrectAnswerId' => $correctAnswer ? $correctAnswer->Id : null,
+            ];
+        });
+
+        return response()->json([
+            'QuizTitle' => $attempt->quiz->Title,
+            'AttemptScore' => $attempt->Score,
+            'AttemptDate' => $attempt->AttemptDate,
+            'Questions' => $questions,
+        ]);
+    }
+
 
     public function update(Request $request, string $id)
     {

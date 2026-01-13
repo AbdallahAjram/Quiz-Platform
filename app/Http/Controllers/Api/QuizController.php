@@ -2,408 +2,509 @@
 
 namespace App\Http\Controllers\Api;
 
-use App\Http\Resources\QuizResource;
 use App\Http\Controllers\Controller;
 use App\Models\Quiz;
-use App\Models\Lesson;
-use App\Models\Course;
+use App\Models\User;
+use App\Models\LessonCompletion;
 use App\Models\Question;
 use App\Models\AnswerOption;
-use App\Models\LessonCompletion;
-use Illuminate\Support\Facades\Auth;
+use App\Models\QuizAttempt;
+use App\Models\QuizAttemptAnswer;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
+use App\Models\Lesson;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Log;
 
 class QuizController extends Controller
 {
-    public function showByCourse($courseId)
-    {
-        $course = Course::find($courseId);
-        if (!$course) {
-            return response()->json(['message' => 'Course not found.'], 404);
-        }
-
-        $userId = auth()->id();
-        $quiz = Quiz::where('CourseId', $courseId)
-            ->whereNull('LessonId')
-            ->withExists(['attempts as has_attempted' => function ($q) use ($userId) {
-                $q->where('UserId', $userId);
-            }])
-            ->first();
-
-        return response()->json(['quiz' => $quiz]);
-    }
-
-    public function storeOrUpdateByCourse(Request $request, $courseId)
-    {
-        Log::info('storeOrUpdateByCourse request data:', $request->all());
-
-        $course = Course::findOrFail($courseId);
-
-        $validatedData = $request->validate([
-            'Quiz' => 'required|array',
-            'Quiz.Title' => 'required|string|max:255',
-            'Quiz.PassingScore' => 'required|integer|min:0|max:100',
-            'Quiz.TimeLimit' => 'nullable|integer|min:0',
-            'Questions' => 'present|array',
-            'Questions.*.Id' => 'nullable|integer',
-            'Questions.*.QuestionText' => 'required|string',
-            'Questions.*.Answers' => 'present|array',
-            'Questions.*.Answers.*.Id' => 'nullable|integer',
-            'Questions.*.Answers.*.AnswerText' => 'required|string',
-            'Questions.*.Answers.*.IsCorrect' => 'required|boolean',
-        ]);
-
-        try {
-            DB::transaction(function () use ($validatedData, $course) {
-                $quizData = $validatedData['Quiz'];
-                $quiz = Quiz::updateOrCreate(
-                    ['CourseId' => $course->Id, 'LessonId' => null],
-                    [
-                        'Title' => $quizData['Title'],
-                        'PassingScore' => $quizData['PassingScore'],
-                        'TimeLimit' => $quizData['TimeLimit'],
-                    ]
-                );
-
-                $incomingQuestionIds = [];
-                foreach ($validatedData['Questions'] as $questionData) {
-                    $question = Question::updateOrCreate(
-                        ['Id' => $questionData['Id'] ?? null, 'QuizId' => $quiz->Id],
-                        ['QuestionText' => $questionData['QuestionText'], 'QuestionType' => 'single', 'Order' => 0]
-                    );
-                    $incomingQuestionIds[] = $question->Id;
-
-                    $incomingAnswerIds = [];
-                    foreach ($questionData['Answers'] as $answerData) {
-                        $answer = AnswerOption::updateOrCreate(
-                            ['Id' => $answerData['Id'] ?? null, 'QuestionId' => $question->Id],
-                            [
-                                'AnswerText' => $answerData['AnswerText'],
-                                'IsCorrect' => $answerData['IsCorrect'],
-                            ]
-                        );
-                        $incomingAnswerIds[] = $answer->Id;
-                    }
-                    // Delete answers that were removed
-                    AnswerOption::where('QuestionId', $question->Id)->whereNotIn('Id', $incomingAnswerIds)->delete();
-                }
-                // Delete questions that were removed
-                Question::where('QuizId', $quiz->Id)->whereNotIn('Id', $incomingQuestionIds)->delete();
-                
-            });
-        } catch (\Exception $e) {
-            Log::error('Failed to save quiz by course:', ['error' => $e->getMessage()]);
-            return response()->json(['message' => 'Failed to save quiz.', 'error' => $e->getMessage()], 500);
-        }
-
-        return response()->json(['message' => 'Quiz saved successfully.']);
-    }
-
-    public function storeOrUpdate(Request $request, $lessonId)
-    {
-        Log::info('storeOrUpdate by lesson request data:', $request->all());
-
-        $lesson = Lesson::findOrFail($lessonId);
-
-        $validatedData = $request->validate([
-            'Quiz' => 'required|array',
-            'Quiz.Title' => 'required|string|max:255',
-            'Quiz.PassingScore' => 'required|integer|min:0|max:100',
-            'Quiz.TimeLimit' => 'nullable|integer|min:0',
-            'Questions' => 'present|array',
-            'Questions.*.Id' => 'nullable|integer',
-            'Questions.*.QuestionText' => 'required|string',
-            'Questions.*.Answers' => 'present|array',
-            'Questions.*.Answers.*.Id' => 'nullable|integer',
-            'Questions.*.Answers.*.AnswerText' => 'required|string',
-            'Questions.*.Answers.*.IsCorrect' => 'required|boolean',
-        ]);
-
-        try {
-            DB::transaction(function () use ($validatedData, $lesson) {
-                $quizData = $validatedData['Quiz'];
-                $quiz = Quiz::updateOrCreate(
-                    ['LessonId' => $lesson->Id],
-                    [
-                        'CourseId' => $lesson->CourseId,
-                        'Title' => $quizData['Title'],
-                        'PassingScore' => $quizData['PassingScore'],
-                        'TimeLimit' => $quizData['TimeLimit'],
-                    ]
-                );
-
-                $incomingQuestionIds = [];
-                foreach ($validatedData['Questions'] as $questionData) {
-                    $question = Question::updateOrCreate(
-                        ['Id' => $questionData['Id'] ?? null, 'QuizId' => $quiz->Id],
-                        ['QuestionText' => $questionData['QuestionText'], 'QuestionType' => 'single', 'Order' => 0]
-                    );
-                    $incomingQuestionIds[] = $question->Id;
-
-                    $incomingAnswerIds = [];
-                    foreach ($questionData['Answers'] as $answerData) {
-                        $answer = AnswerOption::updateOrCreate(
-                            ['Id' => $answerData['Id'] ?? null, 'QuestionId' => $question->Id],
-                            [
-                                'AnswerText' => $answerData['AnswerText'],
-                                'IsCorrect' => $answerData['IsCorrect'],
-                            ]
-                        );
-                        $incomingAnswerIds[] = $answer->Id;
-                    }
-                    // Delete answers that were removed
-                    AnswerOption::where('QuestionId', $question->Id)->whereNotIn('Id', $incomingAnswerIds)->delete();
-                }
-                // Delete questions that were removed
-                Question::where('QuizId', $quiz->Id)->whereNotIn('Id', $incomingQuestionIds)->delete();
-                
-            });
-        } catch (\Exception $e) {
-            Log::error('Failed to save quiz by lesson:', ['error' => $e->getMessage()]);
-            return response()->json(['message' => 'Failed to save quiz.', 'error' => $e->getMessage()], 500);
-        }
-
-        return response()->json(['message' => 'Quiz saved successfully.']);
-    }
-
-    public function showByLesson($lessonId)
-    {
-        $lesson = Lesson::find($lessonId);
-        if (!$lesson) {
-            return response()->json(['message' => 'Lesson not found.'], 404);
-        }
-
-        $quiz = Quiz::where('LessonId', $lessonId)->with('questions.answerOptions')->first();
-
-        if (!$quiz) {
-            return response()->json(['message' => 'Quiz not found for this lesson.'], 404);
-        }
-
-        return new QuizResource($quiz);
-    }
-
     public function index(Request $request)
     {
-        // Optional filters:
-        // ?CourseId=1
-        // ?LessonId=2
-        // ?search=keyword
-        $query = Quiz::query();
-
-        if ($request->filled('CourseId')) {
-            $query->where('CourseId', (int) $request->input('CourseId'));
-        }
-
-        if ($request->filled('LessonId')) {
-            $query->where('LessonId', (int) $request->input('LessonId'));
-        }
-
-        if ($request->filled('search')) {
-            $search = $request->input('search');
-            $query->where('Title', 'ILIKE', "%{$search}%");
-        }
-
-        $quizzes = $query
-            ->orderByDesc('Id')
-            ->paginate((int) $request->input('per_page', 15));
-
-        return response()->json($quizzes);
-    }
-
-    public function store(Request $request)
-    {
-        $data = $request->validate([
-            'CourseId' => ['required', 'integer', 'exists:courses,Id'],
-            'LessonId' => ['nullable', 'integer', 'exists:lessons,Id'],
-
-            'Title' => ['required', 'string', 'max:255'],
-            'PassingScore' => ['required', 'integer', 'min:0'],
-
-            // Decide what units you use (minutes/seconds). This enforces only integer >= 1.
-            'TimeLimit' => ['nullable', 'integer', 'min:1'],
-
-            'ShuffleQuestions' => ['nullable', 'boolean'],
-        ]);
-
-        // Optional: if LessonId is provided, ensure the lesson belongs to the same course.
-        if (!empty($data['LessonId'])) {
-            $lesson = \App\Models\Lesson::find($data['LessonId']);
-            if ($lesson && (int) $lesson->CourseId !== (int) $data['CourseId']) {
-                return response()->json([
-                    'message' => 'LessonId does not belong to the specified CourseId.'
-                ], 422);
-            }
-        }
-
-        $quiz = Quiz::create([
-            'CourseId' => (int) $data['CourseId'],
-            'LessonId' => $data['LessonId'] ?? null,
-            'Title' => $data['Title'],
-            'PassingScore' => (int) $data['PassingScore'],
-            'TimeLimit' => $data['TimeLimit'] ?? null,
-            'ShuffleQuestions' => (bool) ($data['ShuffleQuestions'] ?? false),
-        ]);
-
-        return response()->json([
-            'message' => 'Quiz created successfully.',
-            'data' => $quiz,
-        ], 201);
-    }
-
-    public function show(string $id)
-    {
-        $quiz = Quiz::with(['questions.answerOptions'])->findOrFail($id);
         $user = Auth::user();
 
-        // Guardrail for Lesson Quizzes
-        if ($quiz->LessonId) {
-            $isCompleted = LessonCompletion::where('LessonId', $quiz->LessonId)
-                                           ->where('UserId', $user->Id)
-                                           ->exists();
-            if (!$isCompleted) {
-                return response()->json(['message' => 'You must complete the lesson before taking the quiz.'], 403);
-            }
-        }
-        // Guardrail for Course Quizzes (Final Exams)
-        else if ($quiz->CourseId && $quiz->course) {
-            $totalLessons = $quiz->course->lessons ? $quiz->course->lessons->count() : 0;
-
-            if ($totalLessons > 0) {
-                $completedLessons = LessonCompletion::whereIn('LessonId', $quiz->course->lessons->pluck('Id'))
-                                                    ->where('UserId', $user->Id)
-                                                    ->count();
-
-                if ($completedLessons < $totalLessons) {
-                    return response()->json(['message' => 'You must complete all lessons in the course before taking the final exam.'], 403);
-                }
-            }
+        if ($user->Role === 'Admin') {
+            $quizzes = Quiz::with('course')->withCount('attempts')->get();
+        } elseif ($user->Role === 'Instructor') {
+            $quizzes = Quiz::whereHas('course', function ($query) use ($user) {
+                $query->where('CreatedBy', $user->Id);
+            })->with('course')->withCount('attempts')->get();
+        } else {
+            return response()->json([]);
         }
 
-        if (!$quiz) {
-            return response()->json(['message' => 'Quiz not found.'], 404);
-        }
-
-        return new QuizResource($quiz);
-    }
-
-    public function update(Request $request, string $id)
-    {
-        $quiz = Quiz::find($id);
-
-        if (!$quiz) {
-            return response()->json(['message' => 'Quiz not found.'], 404);
-        }
-
-        $data = $request->validate([
-            'CourseId' => ['sometimes', 'integer', 'exists:courses,Id'],
-            'LessonId' => ['nullable', 'integer', 'exists:lessons,Id'],
-
-            'Title' => ['sometimes', 'string', 'max:255'],
-            'PassingScore' => ['sometimes', 'integer', 'min:0'],
-            'TimeLimit' => ['nullable', 'integer', 'min:1'],
-            'ShuffleQuestions' => ['sometimes', 'boolean'],
-        ]);
-
-        // If both provided/available, enforce lesson belongs to course
-        $courseIdToCheck = isset($data['CourseId']) ? (int) $data['CourseId'] : (int) $quiz->CourseId;
-        $lessonIdToCheck = array_key_exists('LessonId', $data) ? $data['LessonId'] : $quiz->LessonId;
-
-        if (!empty($lessonIdToCheck)) {
-            $lesson = \App\Models\Lesson::find($lessonIdToCheck);
-            if ($lesson && (int) $lesson->CourseId !== $courseIdToCheck) {
-                return response()->json([
-                    'message' => 'LessonId does not belong to the specified CourseId.'
-                ], 422);
-            }
-        }
-
-        $quiz->fill($data);
-        $quiz->save();
-
-        return response()->json([
-            'message' => 'Quiz updated successfully.',
-            'data' => $quiz,
-        ]);
-    }
-
-    public function destroy(string $id)
-    {
-        $quiz = Quiz::find($id);
-
-        if (!$quiz) {
-            return response()->json(['message' => 'Quiz not found.'], 404);
-        }
-
-        $quiz->delete();
-
-        return response()->json(['message' => 'Quiz deleted successfully.']);
-    }
-
-    public function getQuizAnalytics(Request $request)
-    {
-        $user = Auth::user();
-        
-        $query = Quiz::with('course:Id,Title')
-            ->withCount('attempts');
-
-        if ($user->Role === 'Instructor') {
-            $query->whereHas('course', function ($q) use ($user) {
-                $q->where('CreatedBy', $user->Id);
-            });
-        }
-
-        $quizzes = $query->get();
-
-        $stats = $quizzes->map(function ($quiz) {
+        $formattedQuizzes = $quizzes->map(function ($quiz) {
             return [
-                'QuizId' => $quiz->Id,
-                'QuizTitle' => $quiz->Title,
-                'CourseName' => $quiz->course ? $quiz->course->Title : 'N/A',
-                'AttemptCount' => $quiz->attempts_count,
+                'Id' => $quiz->Id,
+                'Title' => $quiz->Title,
+                'CourseTitle' => $quiz->course ? $quiz->course->Title : null,
+                'attempts_count' => $quiz->attempts_count,
             ];
         });
 
-        return response()->json($stats);
+        return response()->json($formattedQuizzes);
     }
 
     public function getStudentStats(Request $request, $quizId)
     {
-        $user = Auth::user();
         $quiz = Quiz::with('course.enrollments.user')->findOrFail($quizId);
 
-        // Authorization Check
-        if ($user->Role === 'Instructor' && $quiz->course->CreatedBy !== $user->Id) {
-            return response()->json(['message' => 'Unauthorized'], 403);
-        }
+        $stats = $quiz->course->enrollments->map(function ($enrollment) use ($quiz) {
+            $user = $enrollment->user;
 
-        $enrolledStudents = $quiz->course->enrollments->map(function ($enrollment) {
-            return $enrollment->user;
-        })->filter();
+            $highestScore = $user->quizAttempts()
+                ->where('QuizId', $quiz->Id)
+                ->max('Score');
 
-        $stats = $enrolledStudents->map(function ($student) use ($quiz) {
-            $attempts = $quiz->attempts()->where('UserId', $student->Id)->get();
-            
-            $highestScore = null;
-            $lastAttemptDate = null;
+            $lastAttempt = $user->quizAttempts()
+                ->where('QuizId', $quiz->Id)
+                ->orderBy('CreatedAt', 'desc')
+                ->first();
 
-            if ($attempts->isNotEmpty()) {
-                $highestScore = $attempts->max('Score');
-                $lastAttemptDate = $attempts->max('created_at');
-            }
+            $isCompleted = LessonCompletion::where('UserId', $user->Id)
+                ->where('LessonId', $quiz->LessonId)
+                ->exists();
 
             return [
-                'StudentName' => $student->Name,
-                'Status' => $attempts->isNotEmpty() ? 'Completed' : 'Not Started',
+                'UserId' => $user->Id,
+                'StudentName' => $user->Name,
+                'Status' => $isCompleted ? 'Completed' : 'Not Started',
                 'HighestScore' => $highestScore,
-                'LastAttemptDate' => $lastAttemptDate,
+                'LastAttemptDate' => $lastAttempt ? $lastAttempt->CreatedAt : null,
+                'LastAttemptId' => $lastAttempt ? $lastAttempt->Id : null,
             ];
         });
 
         return response()->json([
             'quizTitle' => $quiz->Title,
             'stats' => $stats,
+        ]);
+    }
+
+    public function show($id)
+    {
+        $quiz = Quiz::with(['questions.answerOptions'])->findOrFail($id);
+
+        if ($quiz->ShuffleQuestions) {
+            $quiz->questions = $quiz->questions->shuffle();
+        }
+
+        // For students, we don't want to send the IsCorrect flag.
+        if (Auth::user()->Role === 'Student') {
+            $quiz->questions->each(function ($question) {
+                $question->answerOptions->each(function ($option) {
+                    unset($option->IsCorrect);
+                });
+            });
+        }
+
+        return response()->json($quiz);
+    }
+
+        public function showByCourse(Request $request, $courseId)
+
+        {
+
+            $quiz = Quiz::with('questions.answerOptions')->where('CourseId', $courseId)->whereNull('LessonId')->first();
+
+            return response()->json(['quiz' => $quiz]);
+
+        }
+
+    
+
+        public function showByLesson(Request $request, $lessonId)
+
+        {
+
+            $quiz = Quiz::with('questions.answerOptions')->where('LessonId', $lessonId)->first();
+
+            return response()->json(['quiz' => $quiz]);
+
+        }
+
+    
+
+        public function storeOrUpdateByCourse(Request $request, $courseId)
+
+        {
+
+            return $this->_storeOrUpdateQuiz($request, $courseId, null);
+
+        }
+
+    
+
+        public function storeOrUpdateByLesson(Request $request, $lessonId)
+
+        {
+
+            return $this->_storeOrUpdateQuiz($request, null, $lessonId);
+
+        }
+
+    
+
+                private function _storeOrUpdateQuiz(Request $request, $courseId, $lessonId)
+
+    
+
+                {
+
+    
+
+                    $quizData = json_decode($request->input('Quiz'), true);
+
+    
+
+                    $questionsData = json_decode($request->input('Questions'), true);
+
+    
+
+        
+
+    
+
+                    if ($lessonId && !$courseId) {
+
+    
+
+                        $lesson = Lesson::find($lessonId);
+
+    
+
+                        if ($lesson) {
+
+    
+
+                            $courseId = $lesson->CourseId;
+
+    
+
+                        }
+
+    
+
+                    }
+
+    
+
+        
+
+    
+
+                    if (!$courseId) {
+
+    
+
+                        return response()->json(['message' => 'CourseId is required.'], 422);
+
+    
+
+                    }
+
+    
+
+            
+
+    
+
+                    DB::transaction(function () use ($request, $quizData, $questionsData, $courseId, $lessonId) {
+
+    
+
+                        $quiz = Quiz::updateOrCreate(
+
+    
+
+                            ['Id' => $quizData['Id'] ?? null],
+
+    
+
+                            [
+
+    
+
+                                'CourseId' => $courseId,
+
+    
+
+                                'LessonId' => $lessonId,
+
+    
+
+                                'Title' => $quizData['Title'],
+
+    
+
+                                'PassingScore' => $quizData['PassingScore'],
+
+    
+
+                                'TimeLimit' => $quizData['TimeLimit'],
+
+    
+
+                            ]
+
+    
+
+                        );
+
+    
+
+            
+
+    
+
+                        foreach ($questionsData as $index => $questionData) {
+
+    
+
+                            $imagePath = $questionData['ImagePath'] ?? null;
+
+    
+
+        
+
+    
+
+                            // Handle image upload
+
+    
+
+                            if ($request->hasFile("questions.{$index}.image")) {
+
+    
+
+                                $request->validate([
+
+    
+
+                                    "questions.{$index}.image" => 'image|mimes:jpg,png,webp|max:2048',
+
+    
+
+                                ]);
+
+    
+
+                                // Delete old image if it exists
+
+    
+
+                                if ($imagePath && file_exists(storage_path('app/public/' . $imagePath))) {
+
+    
+
+                                    unlink(storage_path('app/public/' . $imagePath));
+
+    
+
+                                }
+
+    
+
+                                $file = $request->file("questions.{$index}.image");
+
+    
+
+                                $path = $file->store('uploads/questions', 'public');
+
+    
+
+                                $imagePath = $path;
+
+    
+
+                            } elseif (isset($questionData['ImagePath']) && $questionData['ImagePath'] === 'DELETE') {
+
+    
+
+                                // Handle image deletion
+
+    
+
+                                $existingQuestion = Question::find($questionData['Id'] ?? null);
+
+    
+
+                                if ($existingQuestion && $existingQuestion->ImagePath) {
+
+    
+
+                                    if (file_exists(storage_path('app/public/' . $existingQuestion->ImagePath))) {
+
+    
+
+                                        unlink(storage_path('app/public/' . $existingQuestion->ImagePath));
+
+    
+
+                                    }
+
+    
+
+                                }
+
+    
+
+                                $imagePath = null;
+
+    
+
+                            }
+
+    
+
+        
+
+    
+
+                            $question = Question::updateOrCreate(
+
+    
+
+                                ['Id' => $questionData['Id'] ?? null],
+
+    
+
+                                [
+
+    
+
+                                    'QuizId' => $quiz->Id,
+
+    
+
+                                    'QuestionText' => $questionData['QuestionText'],
+
+    
+
+                                    'QuestionType' => $questionData['QuestionType'],
+
+    
+
+                                    'Order' => $questionData['Order'],
+
+    
+
+                                    'ImagePath' => $imagePath,
+
+    
+
+                                ]
+
+    
+
+                            );
+
+    
+
+            
+
+    
+
+                            foreach ($questionData['Answers'] as $answerData) {
+
+    
+
+                                AnswerOption::updateOrCreate(
+
+    
+
+                                    ['Id' => $answerData['Id'] ?? null],
+
+    
+
+                                    [
+
+    
+
+                                        'QuestionId' => $question->Id,
+
+    
+
+                                        'AnswerText' => $answerData['AnswerText'],
+
+    
+
+                                        'IsCorrect' => $answerData['IsCorrect'],
+
+    
+
+                                    ]
+
+    
+
+                                );
+
+    
+
+                            }
+
+    
+
+                        }
+
+    
+
+                    });
+
+    
+
+            
+
+    
+
+                    return response()->json(['message' => 'Quiz saved successfully.']);
+
+    
+
+                }
+
+    public function submit(Request $request, $id)
+    {
+        $user = Auth::user();
+        $quiz = Quiz::with('questions.answerOptions')->findOrFail($id);
+        $answers = $request->input('answers'); // e.g., ['1' => 3, '2' => 5]
+
+        $correctAnswers = 0;
+        $totalQuestions = $quiz->questions->count();
+
+        foreach ($quiz->questions as $question) {
+            if (isset($answers[$question->Id])) {
+                $answerId = $answers[$question->Id];
+                $correctOption = $question->answerOptions->firstWhere('IsCorrect', true);
+                if ($correctOption && $correctOption->Id == $answerId) {
+                    $correctAnswers++;
+                }
+            }
+        }
+
+        $score = ($totalQuestions > 0) ? ($correctAnswers / $totalQuestions) * 100 : 0;
+
+        $attempt = DB::transaction(function () use ($quiz, $user, $score, $answers) {
+            $attempt = QuizAttempt::create([
+                'QuizId' => $quiz->Id,
+                'UserId' => $user->Id,
+                'Score' => $score,
+                'AttemptDate' => now(),
+            ]);
+
+            foreach ($answers as $questionId => $answerId) {
+                QuizAttemptAnswer::create([
+                    'AttemptId' => $attempt->Id,
+                    'QuestionId' => $questionId,
+                    'AnswerId' => $answerId,
+                ]);
+            }
+            
+            return $attempt;
+        });
+
+        return response()->json([
+            'message' => 'Quiz submitted successfully.',
+            'attemptId' => $attempt->Id,
+            'score' => $score,
         ]);
     }
 }

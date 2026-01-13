@@ -60,7 +60,7 @@ const EngagementInsights = () => {
 
             <h2 className="text-2xl font-bold mt-8 mb-4">Course Completion Rates</h2>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {insights.map((insight, index) => (
+                {insights.filter(i => i.EnrolledCount > 0).map((insight, index) => (
                     <div key={index} className="p-4 bg-gray-50 rounded-lg shadow">
                         <h3 className="text-xl font-bold">{insight.CourseName}</h3>
                         <p className="text-lg mt-2">Completion Rate: <span className="font-bold">{insight.CompletionRate.toFixed(2)}%</span></p>

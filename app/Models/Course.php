@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Facades\Storage;
 
 class Course extends Model
 {
@@ -40,6 +41,17 @@ class Course extends Model
         'CreatedBy' => 'integer',
         'IsPublished' => 'boolean',
     ];
+
+    protected static function boot()
+    {
+        parent::boot();
+
+        static::deleting(function ($course) {
+            if ($course->Thumbnail) {
+                Storage::delete($course->Thumbnail);
+            }
+        });
+    }
 
     /**
      * User who created the course (courses.CreatedBy -> users.id).

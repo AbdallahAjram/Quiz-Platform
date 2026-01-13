@@ -45,6 +45,12 @@ class LessonController extends Controller
             $query->withExists(['attempts as has_attempted' => function ($q) use ($userId) {
                 $q->where('UserId', $userId);
             }]);
+            $query->addSelect(['last_attempt_id' => \App\Models\QuizAttempt::select('Id')
+                ->whereColumn('QuizId', 'quizzes.Id')
+                ->where('UserId', $userId)
+                ->orderByDesc('CreatedAt')
+                ->limit(1)
+            ]);
         }])->where('CourseId', $CourseId)->orderBy('Order')->get();
         return response()->json($lessons);
     }

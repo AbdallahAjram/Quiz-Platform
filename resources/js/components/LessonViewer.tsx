@@ -2,11 +2,33 @@ import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { useParams, Link } from 'react-router-dom';
 import Toast from './Toast';
+import Modal from './Modal';
+
+interface AnswerOption {
+    Id: number;
+    AnswerText: string;
+}
+
+interface AttemptQuestion {
+    QuestionId: number;
+    QuestionText: string;
+    AnswerOptions: AnswerOption[];
+    UserAnswerId: number | null;
+    CorrectAnswerId: number | null;
+}
+
+interface AttemptDetails {
+    QuizTitle: string;
+    AttemptScore: number;
+    AttemptDate: string;
+    Questions: AttemptQuestion[];
+}
 
 interface Quiz {
     Id: number;
     Title: string;
     has_attempted: boolean;
+    last_attempt_id: number | null;
 }
 
 interface Lesson {
@@ -31,11 +53,16 @@ const LessonViewer = () => {
     const [toast, setToast] = useState<{ message: string, type: 'success' | 'error' } | null>(null);
     const [isLoading, setIsLoading] = useState(true);
 
+    const [isModalOpen, setIsModalOpen] = useState(false);
+    const [selectedAttemptDetails, setSelectedAttemptDetails] = useState<AttemptDetails | null>(null);
+    const [loadingModal, setLoadingModal] = useState(false);
+    const [modalError, setModalError] = useState('');
+    const token = localStorage.getItem('token');
+
     useEffect(() => {
         const fetchLessonsAndCompletions = async () => {
             setIsLoading(true);
             try {
-                const token = localStorage.getItem('token');
                 const [lessonsResponse, completionsResponse, courseQuizResponse] = await Promise.all([
                     axios.get(`http://127.0.0.1:8000/api/courses/${courseId}/lessons`, {
                         headers: { 'Authorization': `Bearer ${token}` },
@@ -74,12 +101,29 @@ const LessonViewer = () => {
         };
 
         fetchLessonsAndCompletions();
-    }, [courseId, lessonId]);
+    }, [courseId, lessonId, token]);
+    
+    const handleViewAnswersClick = async (attemptId: number) => {
+        if (!attemptId) return;
+        setLoadingModal(true);
+        setModalError('');
+        setIsModalOpen(true);
+        try {
+            const response = await axios.get(`http://127.0.0.1:8000/api/attempts/${attemptId}/details`, {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            setSelectedAttemptDetails(response.data);
+        } catch (err) {
+            console.error('Failed to fetch attempt details', err);
+            setModalError('Failed to load attempt details.');
+        } finally {
+            setLoadingModal(false);
+        }
+    };
 
     const handleMarkAsCompleted = async () => {
         if (!currentLesson) return;
         try {
-            const token = localStorage.getItem('token');
             await axios.post('http://127.0.0.1:8000/api/lesson-completions', { LessonId: currentLesson.Id }, {
                 headers: { 'Authorization': `Bearer ${token}` },
             });
@@ -98,7 +142,6 @@ const LessonViewer = () => {
             const a = document.createElement('a');
             a.href = blobUrl;
             
-            // Extract filename from URL
             const urlPath = new URL(url).pathname;
             const decodedPath = decodeURIComponent(urlPath);
             const filename = decodedPath.substring(decodedPath.lastIndexOf('/') + 1);
@@ -113,6 +156,29 @@ const LessonViewer = () => {
             console.error('Download failed:', error);
             setToast({ message: 'Failed to download resource.', type: 'error' });
         }
+    };
+
+    const renderAnswerOption = (option: AnswerOption, question: AttemptQuestion) => {
+        const isUserAnswer = option.Id === question.UserAnswerId;
+        const isCorrectAnswer = option.Id === question.CorrectAnswerId;
+        let className = "p-2 rounded ";
+
+        if (isUserAnswer && isCorrectAnswer) {
+            className += "bg-green-200 border-green-500";
+        } else if (isUserAnswer && !isCorrectAnswer) {
+            className += "bg-red-200 border-red-500";
+        } else if (isCorrectAnswer) {
+            className += "bg-green-100";
+        } else {
+            className += "bg-gray-100";
+        }
+
+        return (
+            <li key={option.Id} className={className}>
+                {option.AnswerText}
+                {isCorrectAnswer && <span className="font-bold text-green-700 ml-2">(Correct)</span>}
+            </li>
+        );
     };
 
     const isCompleted = (lesson: Lesson) => completions.some(c => c.LessonId === lesson.Id);
@@ -151,12 +217,20 @@ const LessonViewer = () => {
                         <h3 className="text-lg font-bold mb-2 text-center">Final Exam</h3>
                         {lessons.length > 0 && completions.length >= lessons.length ? (
                             courseQuiz.has_attempted ? (
-                                <button
-                                    disabled
-                                    className="w-full px-4 py-3 font-bold text-white bg-green-600 rounded-lg cursor-not-allowed"
-                                >
-                                    Exam Completed
-                                </button>
+                                <div className="space-y-2">
+                                    <button
+                                        disabled
+                                        className="w-full px-4 py-3 font-bold text-white bg-green-600 rounded-lg cursor-not-allowed"
+                                    >
+                                        Exam Completed
+                                    </button>
+                                    <button
+                                        onClick={() => handleViewAnswersClick(courseQuiz.last_attempt_id!)}
+                                        className="w-full text-center block px-4 py-2 font-bold text-white bg-blue-600 rounded-lg hover:bg-blue-700"
+                                    >
+                                        View Your Answers
+                                    </button>
+                                </div>
                             ) : (
                                 <Link
                                     to={`/quizzes/take/${courseQuiz.Id}`}
@@ -233,12 +307,20 @@ const LessonViewer = () => {
                                     <h3 className="text-lg font-bold mb-2">Lesson Quiz</h3>
                                     {isCompleted(currentLesson) ? (
                                         currentLesson.quiz.has_attempted ? (
-                                            <button
-                                                disabled
-                                                className="px-8 py-3 font-bold text-white bg-green-600 rounded-lg cursor-not-allowed text-lg"
-                                            >
-                                                Quiz Completed
-                                            </button>
+                                            <div className="space-y-2">
+                                                <button
+                                                    disabled
+                                                    className="w-full px-4 py-3 font-bold text-white bg-green-600 rounded-lg cursor-not-allowed"
+                                                >
+                                                    Quiz Completed
+                                                </button>
+                                                <button
+                                                    onClick={() => handleViewAnswersClick(currentLesson.quiz!.last_attempt_id!)}
+                                                    className="w-full text-center block px-4 py-2 font-bold text-white bg-blue-600 rounded-lg hover:bg-blue-700"
+                                                >
+                                                    View Answers
+                                                </button>
+                                            </div>
                                         ) : (
                                             <Link 
                                                 to={`/quizzes/take/${currentLesson.quiz.Id}`}
@@ -264,6 +346,30 @@ const LessonViewer = () => {
                     </>
                 )}
             </div>
+            <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)}>
+                {loadingModal ? (
+                    <p>Loading details...</p>
+                ) : selectedAttemptDetails ? (
+                    <div>
+                        <h2 className="text-2xl font-bold mb-4">{selectedAttemptDetails.QuizTitle}</h2>
+                        <p>Score: {selectedAttemptDetails.AttemptScore}%</p>
+                        <p>Date: {new Date(selectedAttemptDetails.AttemptDate).toLocaleString()}</p>
+                        <hr className="my-4" />
+                        <div className="space-y-4">
+                            {selectedAttemptDetails.Questions.map(q => (
+                                <div key={q.QuestionId}>
+                                    <p className="font-semibold">{q.QuestionText}</p>
+                                    <ul className="space-y-2 mt-2">
+                                        {q.AnswerOptions.map(opt => renderAnswerOption(opt, q))}
+                                    </ul>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                ) : (
+                    <p>{modalError || 'No details available.'}</p>
+                )}
+            </Modal>
         </div>
     );
 };

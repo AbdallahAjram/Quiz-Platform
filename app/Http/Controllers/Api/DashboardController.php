@@ -65,10 +65,23 @@ class DashboardController extends Controller
     {
         $user = Auth::user();
 
-        $averageScore = QuizAttempt::where('UserId', $user->Id)->avg('Score');
+        // Get all of the user's quiz attempts, grouped by quiz
+        $quizAttempts = QuizAttempt::where('UserId', $user->Id)
+            ->get()
+            ->groupBy('QuizId');
+
+        // If the user has no quiz attempts, return null
+        if ($quizAttempts->isEmpty()) {
+            return response()->json(['AverageQuizScore' => null]);
+        }
+
+        // For each quiz, get the highest score and calculate the average
+        $averageQuizScore = $quizAttempts->map(function ($attempts) {
+            return $attempts->max('Score');
+        })->avg();
 
         return response()->json([
-            'AverageQuizScore' => $averageScore ?? null
+            'AverageQuizScore' => $averageQuizScore
         ]);
     }
 }

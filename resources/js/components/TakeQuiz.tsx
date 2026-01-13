@@ -14,7 +14,8 @@ interface AnswerOption {
 interface Question {
     Id: number;
     QuestionText: string;
-    answerOptions: AnswerOption[]; // Relationship name from Laravel JSON
+    answer_options: AnswerOption[]; // Relationship name from Laravel JSON
+    ImagePath: string | null;
 }
 
 interface Quiz {
@@ -62,7 +63,8 @@ const TakeQuiz = () => {
                     headers: { 'Authorization': `Bearer ${token}` },
                 });
                 
-                const fetchedQuiz = response.data.data;
+                const fetchedQuiz = response.data;
+                console.log('Quiz Data:', fetchedQuiz);
                 setQuiz(fetchedQuiz);
 
                 // --- TIMER ACTIVATION ---
@@ -234,10 +236,15 @@ const TakeQuiz = () => {
                         {currentQuestion && (
                             <div>
                                 <h2 className="text-xl sm:text-2xl font-semibold mb-6">{currentQuestion.QuestionText}</h2>
+                                {currentQuestion.ImagePath && (
+                                    <div className="mb-6">
+                                        <img src={`http://127.0.0.1:8000/storage/${currentQuestion.ImagePath}`} alt="Question visual aid" className="max-w-full mx-auto rounded-lg" />
+                                    </div>
+                                )}
                                 <div className="space-y-3">
                                     {/* --- ANSWER OPTIONS MAPPING --- */}
-                                    {currentQuestion.answerOptions && currentQuestion.answerOptions.length > 0 ? (
-                                        currentQuestion.answerOptions.map(option => (
+                                    {currentQuestion.answer_options && currentQuestion.answer_options.length > 0 ? (
+                                        currentQuestion.answer_options.map(option => (
                                             <label key={option.Id} className={`block w-full text-left p-4 rounded-lg cursor-pointer transition-all transform hover:scale-105 border-2 ${selectedAnswers[currentQuestion.Id] === option.Id ? 'bg-blue-500 border-blue-300' : 'bg-gray-700 hover:bg-gray-600 border-transparent'}`}>
                                                 <input
                                                     type="radio"

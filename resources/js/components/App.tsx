@@ -19,6 +19,7 @@ import LessonManagement from "./LessonManagement";
 import ManageQuizzes from "./ManageQuizzes";
 import EngagementInsights from "./EngagementInsights";
 import QuizStudentStats from "./QuizStudentStats";
+import QuizManagement from "./QuizManagement";
 import TakeQuiz from "./TakeQuiz";
 
 import LessonViewer from "./LessonViewer";
@@ -58,6 +59,7 @@ const App = () => {
                     <Route path="courses/edit/:Id" element={<EditCourse />} />
                     <Route path="courses/:courseId/lessons" element={<LessonManagement />} />
                     <Route path="analytics" element={<EngagementInsights />} />
+                    <Route path="quizzes" element={<QuizManagement />} />
                     <Route path="quizzes/:lessonId" element={<ManageQuizzes />} />
                     <Route path="quizzes/course/:courseId" element={<ManageQuizzes />} />
                     <Route path="quizzes/:quizId/students" element={<QuizStudentStats />} />

@@ -24,6 +24,7 @@ class Question extends Model
         'QuestionText',
         'QuestionType',
         'Order',
+        'ImagePath',
     ];
 
     protected $casts = [

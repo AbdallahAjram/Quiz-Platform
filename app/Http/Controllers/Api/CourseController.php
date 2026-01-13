@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\Course;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
 class CourseController extends Controller
 {
@@ -102,6 +103,7 @@ class CourseController extends Controller
             'Difficulty' => ['nullable', 'string', 'max:255'],
             'Thumbnail' => ['nullable', 'string', 'max:255'],
             'EstimatedDuration' => ['nullable', 'integer', 'min:1'],
+            'CreatedBy' => ['sometimes', 'integer', 'exists:users,Id'],
         ]);
 
         $course->update($data);
@@ -110,7 +112,10 @@ class CourseController extends Controller
 
     public function destroy(Course $course)
     {
-        $course->delete();
+        DB::transaction(function () use ($course) {
+            $course->delete();
+        });
+
         return response()->json(['message' => 'Deleted successfully']);
     }
 }

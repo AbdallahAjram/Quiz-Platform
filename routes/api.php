@@ -84,20 +84,20 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/courses/{courseId}/quiz', [QuizController::class, 'showByCourse']);
     Route::get('/lessons/{lessonId}/quiz', [QuizController::class, 'showByLesson']);
     Route::post('/courses/{courseId}/quiz', [QuizController::class, 'storeOrUpdateByCourse'])->middleware('role:Admin,Instructor');
-    Route::post('/lessons/{lessonId}/quiz', [QuizController::class, 'storeOrUpdate'])->middleware('role:Admin,Instructor');
+    Route::post('/lessons/{lessonId}/quiz', [QuizController::class, 'storeOrUpdateByLesson'])->middleware('role:Admin,Instructor');
 
     Route::post('quizzes/{quizId}/attempts', [QuizAttemptController::class, 'store']);
     
     // QUIZZES - Read-only for students, write for instructors/admins
     Route::get('quizzes', [QuizController::class, 'index']);
     Route::get('quizzes/{id}', [QuizController::class, 'show'])->where('id', '[0-9]+');
+    Route::post('quizzes/{id}/submit', [QuizController::class, 'submit'])->where('id', '[0-9]+');
 
     Route::middleware('role:Admin,Instructor')->group(function () {
         Route::get('analytics/engagement-insights', [AnalyticsController::class, 'getEngagementInsights']);
         Route::get('quizzes/analytics', [QuizController::class, 'getQuizAnalytics']);
         Route::get('quizzes/{quizId}/students', [QuizController::class, 'getStudentStats']);
         Route::get('instructor/quizzes', [QuizController::class, 'getQuizAnalytics']);
-        Route::post('quizzes', [QuizController::class, 'store']);
         Route::put('quizzes/{id}', [QuizController::class, 'update'])->where('id', '[0-9]+');
         Route::patch('quizzes/{id}', [QuizController::class, 'update'])->where('id', '[0-9]+');
         Route::delete('quizzes/{id}', [QuizController::class, 'destroy'])->where('id', '[0-9]+');
@@ -107,4 +107,5 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::apiResource('answer-options', AnswerOptionController::class);
     Route::apiResource('quiz-attempts', QuizAttemptController::class);
     Route::apiResource('quiz-attempt-answers', QuizAttemptAnswerController::class);
+    Route::get('/attempts/{attemptId}/details', [QuizAttemptController::class, 'getAttemptDetails']);
 });

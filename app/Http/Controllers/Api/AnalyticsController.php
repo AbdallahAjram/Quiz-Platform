@@ -14,7 +14,8 @@ class AnalyticsController extends Controller
         $user = Auth::user();
 
         $query = Course::withCount('enrollments')
-            ->with(['quizzes.attempts']);
+            ->with(['quizzes.attempts'])
+            ->whereHas('quizzes.attempts');
 
         if ($user->Role === 'Instructor') {
             $query->where('CreatedBy', $user->Id);

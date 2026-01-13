@@ -17,6 +17,7 @@ interface Question {
     QuestionType: string;
     Order: number;
     Answers: AnswerOption[];
+    ImagePath: string | null;
 }
 
 interface Quiz {
@@ -34,6 +35,8 @@ const ManageQuizzes = () => {
     const { lessonId, courseId } = useParams<{ lessonId?: string, courseId?: string }>();
     const [quiz, setQuiz] = useState<Quiz | null>(null);
     const [questions, setQuestions] = useState<Question[]>([]);
+    const [questionImages, setQuestionImages] = useState<{ [key: number]: File }>({});
+    const [imagePreviews, setImagePreviews] = useState<{ [key: number]: string }>({});
     const [toast, setToast] = useState<{ message: string, type: 'success' | 'error' } | null>(null);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [loading, setLoading] = useState(true);
@@ -53,13 +56,44 @@ const ManageQuizzes = () => {
                 headers: { 'Authorization': `Bearer ${token}` }
             });
             setQuiz(response.data.quiz);
-            setQuestions(response.data.quiz.questions.map((q: any) => ({...q, Answers: q.answer_options || []})));
+            setQuestions(response.data.quiz.questions.map((q: any) => ({...q, ImagePath: q.ImagePath, Answers: q.answer_options || []})));
         } catch (error) {
             console.error("Failed to fetch quiz data:", error);
             setToast({ message: 'No existing quiz found. Fill out the form to create one.', type: 'error' });
         } finally {
             setLoading(false);
         }
+    };
+    
+    const handleImageChange = (questionId: number, file: File | null) => {
+        if (file) {
+            setQuestionImages(prev => ({ ...prev, [questionId]: file }));
+            const reader = new FileReader();
+            reader.onloadend = () => {
+                setImagePreviews(prev => ({ ...prev, [questionId]: reader.result as string }));
+            };
+            reader.readAsDataURL(file);
+        }
+    };
+
+    const removeImage = (questionId: number) => {
+        setQuestionImages(prev => {
+            const newImages = { ...prev };
+            delete newImages[questionId];
+            return newImages;
+        });
+        setImagePreviews(prev => {
+            const newPreviews = { ...prev };
+            delete newPreviews[questionId];
+            return newPreviews;
+        });
+        setQuestions(questions.map(q => {
+            if (q.Id === questionId) {
+                // If the image was on the server, mark for deletion. Otherwise, just clear the path.
+                return { ...q, ImagePath: q.ImagePath ? 'DELETE' : null };
+            }
+            return q;
+        }));
     };
     
     const handleQuizChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -133,6 +167,7 @@ const ManageQuizzes = () => {
             QuestionType: 'single',
             Order: questions.length + 1,
             Answers: [],
+            ImagePath: null,
         };
         setQuestions([...questions, newQuestion]);
     }
@@ -142,8 +177,9 @@ const ManageQuizzes = () => {
         setIsSubmitting(true);
     
         const token = localStorage.getItem('token');
+        const formData = new FormData();
     
-        // Clean up temporary IDs
+        // Clean up temporary IDs and prepare questions for API
         const questionsForApi = questions.map(q => {
             const { Id, ...restOfQuestion } = q;
             return {
@@ -158,19 +194,31 @@ const ManageQuizzes = () => {
                 }),
             };
         });
+
+        formData.append('Quiz', JSON.stringify(quiz));
+        formData.append('Questions', JSON.stringify(questionsForApi));
+
+        questions.forEach((q, index) => {
+            if (questionImages[q.Id]) {
+                formData.append(`questions[${index}][image]`, questionImages[q.Id]);
+            }
+        });
         
         const url = lessonId 
             ? `http://127.0.0.1:8000/api/lessons/${lessonId}/quiz` 
             : `http://127.0.0.1:8000/api/courses/${courseId}/quiz`;
     
         try {
-            await axios.post(url, {
-                Quiz: quiz,
-                Questions: questionsForApi,
-            }, {
-                headers: { 'Authorization': `Bearer ${token}` }
+            await axios.post(url, formData, {
+                headers: { 
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'multipart/form-data',
+                }
             });
             setToast({ message: 'Quiz saved successfully!', type: 'success' });
+            // Clear previews and file inputs after successful upload
+            setImagePreviews({});
+            setQuestionImages({});
             fetchQuiz(); // Refetch to get correct IDs from DB
         } catch (error) {
             console.error('Failed to save quiz:', error);
@@ -248,6 +296,31 @@ const ManageQuizzes = () => {
                                 className="w-full p-2 border rounded mt-2"
                                 required
                             />
+                            <div className="mt-2">
+                                <label className="block text-sm font-medium text-gray-700">Question Image</label>
+                                {imagePreviews[question.Id] ? (
+                                    <img src={imagePreviews[question.Id]} alt="Preview" className="mt-2 max-h-40 rounded" />
+                                ) : (
+                                    question.ImagePath && question.ImagePath !== 'DELETE' && (
+                                        <img src={`http://127.0.0.1:8000/storage/${question.ImagePath}`} alt="Question visual aid" className="mt-2 max-h-40 rounded" />
+                                    )
+                                )}
+                                <input
+                                    type="file"
+                                    accept="image/png, image/jpeg, image/webp"
+                                    onChange={(e) => handleImageChange(question.Id, e.target.files ? e.target.files[0] : null)}
+                                    className="mt-2"
+                                />
+                                {(imagePreviews[question.Id] || (question.ImagePath && question.ImagePath !== 'DELETE')) && (
+                                    <button
+                                        type="button"
+                                        onClick={() => removeImage(question.Id)}
+                                        className="mt-2 px-3 py-1 bg-yellow-500 text-white rounded hover:bg-yellow-600"
+                                    >
+                                        Remove Image
+                                    </button>
+                                )}
+                            </div>
                             <div className="mt-4">
                                 <h4 className="font-semibold">Answers</h4>
                                 {question.Answers.map((answer) => (
