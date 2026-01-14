@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\Enrollment;
 use App\Models\LessonCompletion;
+use App\Models\QuizAttempt;
 use Illuminate\Http\Request;
 use Illuminate\Database\QueryException;
 
@@ -139,8 +140,11 @@ class EnrollmentController extends Controller
                 $query->withCount(['completions as completed_lessons_count' => function ($q) use ($userId) {
                     $q->where('UserId', $userId);
                 }]);
-                $query->with(['quizzes as course_quiz' => function($q) {
-                    $q->whereNull('LessonId')->select('Id', 'CourseId'); // Select only what's needed
+                $query->with(['quizzes' => function($q) use ($userId) {
+                    $q->select('Id', 'CourseId', 'LessonId', 'Title'); // Select only what's needed
+                    $q->withMax(['attempts as highest_score' => function ($query) use ($userId) {
+                        $query->where('UserId', $userId);
+                    }], 'Score');
                 }]);
             }
         ])->get();
@@ -155,12 +159,14 @@ class EnrollmentController extends Controller
             $course->totalLessonsCount = $course->lessons_count;
             $course->completedLessonsCount = $course->completed_lessons_count;
             
-            // The quiz relationship will be an array, we want the object or null
-            $course->courseQuiz = $course->course_quiz->first();
+            // Separate lesson quizzes from the main course quiz
+            $course->courseQuiz = $course->quizzes->whereNull('LessonId')->first();
+            $course->lessonQuizzes = $course->quizzes->whereNotNull('LessonId')->values();
 
+            // Clean up
             unset($course->lessons_count);
             unset($course->completed_lessons_count);
-            unset($course->course_quiz);
+            unset($course->quizzes);
 
             return $course;
         })->filter()->values();

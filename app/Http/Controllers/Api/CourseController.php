@@ -110,8 +110,10 @@ class CourseController extends Controller
         return response()->json($course);
     }
 
-    public function destroy(Course $course)
+    public function destroy($Id)
     {
+        $course = Course::findOrFail($Id);
+        
         DB::transaction(function () use ($course) {
             $course->delete();
         });

@@ -41,22 +41,17 @@ Route::middleware('auth:sanctum')->group(function () {
 
     Route::get('dashboard/stats', [DashboardController::class, 'getStats']);
 
-    // Admin-only management routes
-    Route::middleware('role:Admin')->prefix('admin')->group(function () {
-        // This is for fetching the table of users
-        Route::get('users', [UserController::class, 'index']); 
-        
-        // Your specific Admin actions
+    Route::middleware('role:Admin')->group(function () {
         Route::post('instructors', [AdminController::class, 'createInstructor']);
-        Route::patch('users/{Id}/approve', [AdminController::class, 'approve']);
-        Route::delete('users/{Id}', [AdminController::class, 'destroy']);
-        
-        // Dashboard specific routes
         Route::get('stats', [AdminController::class, 'getDashboardStats']);
         Route::get('recent-enrollments', [AdminController::class, 'getRecentEnrollments']);
     });
 
-    // Resources (Note: only allow Admin to access full User resource)
+    // User Management routes
+    Route::middleware('role:Admin')->group(function() {
+        Route::get('/users/instructors', [UserController::class, 'getInstructors']);
+        Route::patch('/users/{id}/status', [UserController::class, 'updateStatus']);
+    });
     Route::apiResource('users', UserController::class)->middleware('role:Admin');
     
     Route::middleware('role:Student')->prefix('student')->group(function () {

@@ -17,7 +17,7 @@ return new class extends Migration
     $table->string('Email')->unique();
     $table->string('Password');
     $table->string('Role');
-    $table->boolean('IsActive')->default(true);
+    $table->string('Status')->default('Active');
     $table->timestamp('CreatedAt')->nullable();
     $table->timestamp('UpdatedAt')->nullable();
 });

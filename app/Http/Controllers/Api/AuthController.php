@@ -17,17 +17,16 @@ class AuthController extends Controller
             'Email' => ['required','email','unique:users,Email'],
             'Password' => ['required','string','min:6'],
             'Role' => ['required','string'],
-            'IsActive' => ['nullable','boolean'],
         ]);
 
-        $isActive = $data['Role'] === 'Instructor' ? false : true;
+        $status = $data['Role'] === 'Instructor' ? 'Pending' : 'Active';
 
         $user = User::create([
             'Name' => $data['Name'],
             'Email' => $data['Email'],
             'Password' => Hash::make($data['Password']),
             'Role' => $data['Role'],
-            'IsActive' => $isActive,
+            'Status' => $status,
         ]);
 
         $token = $user->createToken('api-token')->plainTextToken;
@@ -53,8 +52,16 @@ class AuthController extends Controller
             ]);
         }
 
-        if (!$user->IsActive) {
-            return response()->json(['message' => 'Your account is pending administrator approval.'], 403);
+        if ($user->Status === 'Pending') {
+            return response()->json(['message' => 'Your instructor registration is pending admin approval.'], 403);
+        }
+
+        if ($user->Status === 'Revoked') {
+            return response()->json(['message' => 'Your account is restricted. Contact administrator.'], 403);
+        }
+
+        if ($user->Status !== 'Active') {
+            return response()->json(['message' => 'This account is not active.'], 403);
         }
 
         $token = $user->createToken('api-token')->plainTextToken;

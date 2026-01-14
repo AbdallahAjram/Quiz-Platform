@@ -97,9 +97,10 @@ const ManageQuizzes = () => {
     };
     
     const handleQuizChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        const { name, value } = e.target;
+        const { name, value, type, checked } = e.target;
+        const val = type === 'checkbox' ? checked : value;
         if (quiz) {
-            setQuiz({ ...quiz, [name]: value });
+            setQuiz({ ...quiz, [name]: val });
         } else {
             // If there is no quiz, create a new one
             setQuiz({
@@ -110,7 +111,7 @@ const ManageQuizzes = () => {
                 PassingScore: 0,
                 TimeLimit: 0,
                 ShuffleQuestions: false,
-                [name]: value
+                [name]: val
             });
         }
     };
@@ -272,6 +273,18 @@ const ManageQuizzes = () => {
                             placeholder="Time Limit (minutes)"
                             className="w-full p-2 border rounded"
                         />
+                    </div>
+                    <div className="mt-4">
+                        <label className="flex items-center">
+                            <input
+                                type="checkbox"
+                                name="ShuffleQuestions"
+                                checked={quiz?.ShuffleQuestions || false}
+                                onChange={handleQuizChange}
+                                className="form-checkbox h-5 w-5 text-blue-600"
+                            />
+                            <span className="ml-2 text-gray-700">Shuffle Questions</span>
+                        </label>
                     </div>
                 </div>
 

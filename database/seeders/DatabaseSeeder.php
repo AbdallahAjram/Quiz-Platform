@@ -15,7 +15,7 @@ class DatabaseSeeder extends Seeder
             'Name' => 'Admin User',
             'Role' => 'Admin',
             'Password' => Hash::make('password'),
-            'IsActive' => true,
+            'Status' => 'Active',
         ]);
 
         // Create a specific instructor
@@ -23,7 +23,7 @@ class DatabaseSeeder extends Seeder
             'Name' => 'Instructor User',
             'Role' => 'Instructor',
             'Password' => Hash::make('password'),
-            'IsActive' => true,
+            'Status' => 'Active',
         ]);
 
         // Create a specific student
@@ -31,7 +31,7 @@ class DatabaseSeeder extends Seeder
             'Name' => 'Student User',
             'Role' => 'Student',
             'Password' => Hash::make('password'),
-            'IsActive' => true,
+            'Status' => 'Active',
         ]);
     }
 }

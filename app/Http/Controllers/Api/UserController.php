@@ -21,7 +21,7 @@ class UserController extends Controller
             'Email' => ['required', 'email', 'unique:users,Email'],
             'Password' => ['required', 'string', 'min:6'],
             'Role' => ['required', 'string'],
-            'IsActive' => ['nullable', 'boolean'],
+            'Status' => ['nullable', 'string'],
         ]);
 
         $user = User::create([
@@ -29,7 +29,7 @@ class UserController extends Controller
             'Email' => $data['Email'],
             'Password' => Hash::make($data['Password']),
             'Role' => $data['Role'],
-            'IsActive' => $data['IsActive'] ?? null,
+            'Status' => $data['Status'] ?? 'Active',
         ]);
 
         return response()->json($user, 201);
@@ -40,14 +40,16 @@ class UserController extends Controller
         return $user;
     }
 
-    public function update(Request $request, User $user)
+    public function update(Request $request, $id)
     {
+        $user = User::findOrFail($id);
+
         $data = $request->validate([
             'Name' => ['sometimes', 'string', 'max:255'],
             'Email' => ['sometimes', 'email', 'unique:users,Email,' . $user->Id],
             'Password' => ['nullable', 'string', 'min:6'],
             'Role' => ['sometimes', 'string'],
-            'IsActive' => ['nullable', 'boolean'],
+            'Status' => ['nullable', 'string'],
         ]);
 
         if (!empty($data['Password'] ?? null)) {
@@ -59,9 +61,26 @@ class UserController extends Controller
         return $user;
     }
 
-    public function destroy(User $user)
+    public function updateStatus(Request $request, $id)
     {
-        $user->delete();
-        return response()->json(['message' => 'Deleted successfully']);
+        $user = User::findOrFail($id);
+
+        $data = $request->validate([
+            'Status' => ['required', 'string', 'in:Active,Pending,Revoked'],
+        ]);
+
+        $user->Status = $data['Status'];
+        $user->save();
+
+        return response()->json([
+            'message' => 'User status updated successfully.',
+            'user' => $user,
+        ]);
+    }
+
+    public function getInstructors()
+    {
+        $instructors = User::whereIn('Role', ['Instructor', 'Admin'])->select('Id', 'Name')->get();
+        return response()->json($instructors);
     }
 }

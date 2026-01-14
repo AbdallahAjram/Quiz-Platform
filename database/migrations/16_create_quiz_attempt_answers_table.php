@@ -33,11 +33,10 @@ return new class extends Migration
                 ->on('questions')
                 ->onDelete('cascade');
 
-            // If an option is deleted later, keep attempt history but null the option ref
             $table->foreign('AnswerId')
                 ->references('Id')
                 ->on('answer_options')
-                ->nullOnDelete();
+                ->onDelete('cascade');
 
             $table->index(['AttemptId', 'QuestionId']);
         });

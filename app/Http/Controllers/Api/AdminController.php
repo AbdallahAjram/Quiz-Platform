@@ -29,33 +29,10 @@ class AdminController extends Controller
             'Email' => $data['Email'],
             'Password' => Hash::make($data['Password']),
             'Role' => 'Instructor',
-            'IsActive' => true, // Manually added instructors are active by default
+            'Status' => 'Active', // Manually added instructors are active by default
         ]);
 
         return response()->json($user, 201);
-    }
-
-    /**
-     * Approve a pending instructor.
-     */
-    public function approve($Id)
-    {
-        // Finding user by PascalCase primary key Id
-        $user = User::findOrFail($Id);
-        $user->update(['IsActive' => true]);
-
-        return response()->json($user, 200);
-    }
-    
-    /**
-     * Reject and delete a pending instructor.
-     */
-    public function destroy($Id)
-    {
-        $user = User::findOrFail($Id);
-        $user->delete();
-
-        return response()->json(['message' => 'User rejected and deleted successfully']);
     }
 
     /**

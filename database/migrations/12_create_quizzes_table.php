@@ -32,11 +32,11 @@ return new class extends Migration
                 ->on('courses')
                 ->onDelete('cascade');
 
-            // If a lesson is deleted, keep the quiz but detach it from the lesson
+            // If a lesson is deleted, the quiz is also deleted
             $table->foreign('LessonId')
                 ->references('Id')
                 ->on('lessons')
-                ->nullOnDelete();
+                ->onDelete('cascade');
 
             // Helpful indexes
             $table->index('CourseId');

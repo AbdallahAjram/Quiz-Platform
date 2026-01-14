@@ -30,11 +30,10 @@ const CourseForm = () => {
                 try {
                     const token = localStorage.getItem('token');
                     // Ensure this endpoint exists in api.php
-                    const response = await axios.get('http://127.0.0.1:8000/api/admin/users', {
+                    const response = await axios.get('http://127.0.0.1:8000/api/users/instructors', {
                         headers: { 'Authorization': `Bearer ${token}` },
                     });
-                    const activeInstructors = response.data.filter((u: any) => u.Role === 'Instructor' && u.IsActive);
-                    setInstructors(activeInstructors);
+                    setInstructors(response.data);
                 } catch (error) {
                     setToast({ message: 'Failed to fetch instructors.', type: 'error' });
                 }
