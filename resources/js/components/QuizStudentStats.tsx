@@ -1,13 +1,13 @@
 import React, { useEffect, useState } from 'react';
 import axios from 'axios';
 import { useParams } from 'react-router-dom';
-import { Users, CheckCircle, XCircle } from 'lucide-react';
+import { Users, CheckCircle, XCircle, CircleDashed } from 'lucide-react';
 import Modal from './Modal';
 
 interface StudentStat {
     UserId: number;
     StudentName: string;
-    Status: 'Completed' | 'Not Started';
+    Status: 'Completed' | 'Not Started' | 'In Progress';
     HighestScore: number | null;
     LastAttemptDate: string | null;
     LastAttemptId: number | null;
@@ -131,7 +131,9 @@ const QuizStudentStats = () => {
                             <tr key={stat.UserId} className="border-b border-gray-200">
                                 <td className="px-6 py-4 whitespace-nowrap">{stat.StudentName}</td>
                                 <td className="px-6 py-4 whitespace-nowrap flex items-center">
-                                    {stat.Status === 'Completed' ? <CheckCircle className="text-green-500 mr-2" /> : <XCircle className="text-red-500 mr-2" />}
+                                    {stat.Status === 'Completed' && <CheckCircle className="text-green-500 mr-2" />}
+                                    {stat.Status === 'In Progress' && <CircleDashed className="text-yellow-500 mr-2" />}
+                                    {stat.Status === 'Not Started' && <XCircle className="text-red-500 mr-2" />}
                                     {stat.Status}
                                 </td>
                                 <td className="px-6 py-4 whitespace-nowrap">
@@ -159,7 +161,7 @@ const QuizStudentStats = () => {
                 {loadingModal ? (
                     <p>Loading details...</p>
                 ) : selectedAttemptDetails ? (
-                    <div>
+                    <div className="max-h-[80vh] overflow-y-auto pr-4">
                         <h2 className="text-2xl font-bold mb-4">{selectedAttemptDetails.QuizTitle}</h2>
                         <p>Score: {selectedAttemptDetails.AttemptScore}%</p>
                         <p>Date: {new Date(selectedAttemptDetails.AttemptDate).toLocaleString()}</p>

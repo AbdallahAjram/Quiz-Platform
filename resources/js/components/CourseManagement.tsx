@@ -36,43 +36,47 @@ const CourseCard = ({ course, user, onTogglePublish, onDelete }: { course: Cours
     };
 
     return (
-        <div className="bg-white p-4 rounded-lg shadow-md border border-gray-100 cursor-pointer" onClick={handleCardClick}>
-            <div className="flex justify-between items-start">
-                <h2 className="text-lg font-bold mb-2">{course.Title}</h2>
-                {(user.Role === 'Admin' || user.Id === course.CreatedBy) && (
-                    <div className="flex space-x-2">
-                        <Link to={`/management/courses/edit/${course.Id}`} onClick={(e) => e.stopPropagation()} className="p-1 text-gray-500 hover:text-gray-700">
-                            <Edit className="w-4 h-4" />
-                        </Link>
-                        <button onClick={(e) => { e.stopPropagation(); onDelete(course.Id); }} className="p-1 text-red-500 hover:text-red-700">
-                            <Trash className="w-4 h-4" />
-                        </button>
-                    </div>
+        <div className="bg-white p-4 rounded-lg shadow-md border border-gray-100 flex flex-col justify-between">
+            <div onClick={handleCardClick} className="cursor-pointer">
+                <div className="flex justify-between items-start">
+                    <h2 className="text-lg font-bold mb-2">{course.Title}</h2>
+                    {(user.Role === 'Admin' || user.Id === course.CreatedBy) && (
+                        <div className="flex space-x-2">
+                            <Link to={`/management/courses/edit/${course.Id}`} onClick={(e) => e.stopPropagation()} className="p-1 text-gray-500 hover:text-gray-700">
+                                <Edit className="w-4 h-4" />
+                            </Link>
+                            <button onClick={(e) => { e.stopPropagation(); onDelete(course.Id); }} className="p-1 text-red-500 hover:text-red-700">
+                                <Trash className="w-4 h-4" />
+                            </button>
+                        </div>
+                    )}
+                </div>
+                <p className="text-sm text-gray-700 mb-2">{course.ShortDescription}</p>
+                {user.Role === 'Admin' && course.instructor && (
+                    <p className="text-xs text-gray-500 mb-2">
+                        Taught by: {course.instructor.Name}
+                    </p>
                 )}
+                <div className="flex justify-between items-center text-xs">
+                    <span className="font-semibold text-gray-600">{course.Category}</span>
+                    <span className={`px-2 py-1 font-semibold text-white rounded-full ${getDifficultyClass(course.Difficulty)}`}>
+                        {course.Difficulty || 'Unassigned Difficulty'}
+                    </span>
+                </div>
             </div>
-            <p className="text-sm text-gray-700 mb-2">{course.ShortDescription}</p>
-            {user.Role === 'Admin' && course.instructor && (
-                <p className="text-xs text-gray-500 mb-2">
-                    Taught by: {course.instructor.Name}
-                </p>
-            )}
-            <div className="flex justify-between items-center text-xs">
-                <span className="font-semibold text-gray-600">{course.Category}</span>
-                <span className={`px-2 py-1 font-semibold text-white rounded-full ${getDifficultyClass(course.Difficulty)}`}>
-                    {course.Difficulty || 'Unassigned Difficulty'}
-                </span>
-            </div>
-            <div className="flex justify-between items-center mt-2 text-xs">
-                <span className={`px-2 py-1 font-semibold rounded-full ${course.IsPublished ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'}`}>
+            <div className="flex justify-between items-center mt-4 pt-2 border-t">
+                <span className={`px-2 py-1 font-semibold rounded-full text-xs ${course.IsPublished ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'}`}>
                     {course.IsPublished ? 'Published' : 'Draft'}
                 </span>
                 {(user.Role === 'Admin' || user.Id === course.CreatedBy) && (
-                     <button
-                        onClick={(e) => { e.stopPropagation(); onTogglePublish(course.Id, !course.IsPublished); }}
-                        className={`px-2 py-1 font-semibold rounded-full ${course.IsPublished ? 'bg-orange-500 hover:bg-orange-600 text-white' : 'bg-blue-500 hover:bg-blue-600 text-white'}`}
-                    >
-                        {course.IsPublished ? 'Unpublish' : 'Publish'}
-                    </button>
+                     <div className="flex items-center space-x-2">
+                        <button
+                            onClick={(e) => { e.stopPropagation(); onTogglePublish(course.Id, !course.IsPublished); }}
+                            className={`px-2 py-1 text-xs font-semibold rounded-full ${course.IsPublished ? 'bg-orange-500 hover:bg-orange-600 text-white' : 'bg-blue-500 hover:bg-blue-600 text-white'}`}
+                        >
+                            {course.IsPublished ? 'Unpublish' : 'Publish'}
+                        </button>
+                     </div>
                 )}
             </div>
         </div>
@@ -132,7 +136,7 @@ const CourseManagement = () => {
     if (!courses) return null;
 
     return (
-        <div className="container mx-auto">
+        <div className="container mx-auto p-6">
             {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
             <div className="flex justify-between items-center mb-6">
                 <h1 className="text-2xl font-bold text-gray-900">Course Management</h1>

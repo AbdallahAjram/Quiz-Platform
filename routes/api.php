@@ -19,7 +19,8 @@ use App\Http\Controllers\Api\{
     QuizAttemptAnswerController,
     AdminController,
     DashboardController,
-    AnalyticsController
+    AnalyticsController,
+    AIController
 };
 
 // Health check
@@ -45,6 +46,12 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('instructors', [AdminController::class, 'createInstructor']);
         Route::get('stats', [AdminController::class, 'getDashboardStats']);
         Route::get('recent-enrollments', [AdminController::class, 'getRecentEnrollments']);
+    });
+
+    // AI quiz generation
+    Route::middleware('role:Admin,Instructor')->group(function () {
+        Route::post('/ai/generate-quiz', [AIController::class, 'generateQuiz']);
+        Route::post('/ai/save-quiz', [AIController::class, 'saveQuiz']);
     });
 
     // User Management routes

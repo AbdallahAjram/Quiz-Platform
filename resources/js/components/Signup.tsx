@@ -64,7 +64,7 @@ const Signup = () => {
             <div className="w-full max-w-md p-8 space-y-6 bg-white rounded-lg shadow-md">
                 <div className="text-center">
                     <h1 className="text-3xl font-bold text-gray-900">Create an Account</h1>
-                    <p className="text-gray-500">Join the Academy today!</p>
+                    <p className="text-gray-500">Join Quizify today!</p>
                 </div>
 
                 {error && (

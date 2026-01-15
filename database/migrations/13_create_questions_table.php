@@ -14,7 +14,7 @@ return new class extends Migration
             $table->unsignedBigInteger('QuizId');
 
             $table->text('QuestionText');
-            $table->string('QuestionType'); // e.g. 'single', 'multiple', 'text'
+            $table->string('QuestionType'); // e.g. 'single', 'multiple'
             $table->integer('Order');
 
             $table->timestamp('CreatedAt')->useCurrent();

@@ -22,6 +22,7 @@ class Certificate extends Model
         'DownloadUrl',
         'VerificationCode',
         'GeneratedAt',
+        'Platform',
     ];
 
     protected $casts = [

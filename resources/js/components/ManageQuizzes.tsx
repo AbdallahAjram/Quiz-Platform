@@ -116,18 +116,18 @@ const ManageQuizzes = () => {
         }
     };
     
-    function handleAnswerChange(questionId: number, answerId: number, text: string) {
-        setQuestions(questions.map(q => 
-            q.Id === questionId 
-                ? { ...q, Answers: q.Answers.map(a => a.Id === answerId ? { ...a, AnswerText: text } : a) } 
-                : q
-        ));
-    }
-
     function handleCorrectAnswerChange(questionId: number, answerId: number) {
         setQuestions(questions.map(q => 
             q.Id === questionId 
                 ? { ...q, Answers: q.Answers.map(a => ({ ...a, IsCorrect: a.Id === answerId })) } 
+                : q
+        ));
+    }
+
+    function handleCorrectAnswerChangeMSQ(questionId: number, answerId: number) {
+        setQuestions(questions.map(q => 
+            q.Id === questionId 
+                ? { ...q, Answers: q.Answers.map(a => a.Id === answerId ? { ...a, IsCorrect: !a.IsCorrect } : a) } 
                 : q
         ));
     }
@@ -165,7 +165,7 @@ const ManageQuizzes = () => {
             Id: Date.now(), // Temporary ID for client-side key
             QuizId: quiz?.Id || 0,
             QuestionText: '',
-            QuestionType: 'single',
+            QuestionType: 'MCQ',
             Order: questions.length + 1,
             Answers: [],
             ImagePath: null,
@@ -294,13 +294,24 @@ const ManageQuizzes = () => {
                         <div key={question.Id} className="border-t pt-4 mt-4">
                             <div className="flex justify-between items-center">
                                 <h3 className="text-lg font-semibold">Question {index + 1}</h3>
-                                <button
-                                    type="button"
-                                    onClick={() => removeQuestion(question.Id)}
-                                    className="px-3 py-1 bg-red-600 text-white rounded hover:bg-red-700"
-                                >
-                                    Remove
-                                </button>
+                                <div className="flex items-center space-x-4">
+                                    <select 
+                                        value={question.QuestionType} 
+                                        onChange={(e) => handleQuestionChange(question.Id, 'QuestionType', e.target.value)}
+                                        className="p-2 border rounded"
+                                    >
+                                        <option value="MCQ">Multiple Choice (Single Answer)</option>
+                                        <option value="MSQ">Multiple Select (Multiple Answers)</option>
+                                        <option value="TF">True/False</option>
+                                    </select>
+                                    <button
+                                        type="button"
+                                        onClick={() => removeQuestion(question.Id)}
+                                        className="px-3 py-1 bg-red-600 text-white rounded hover:bg-red-700"
+                                    >
+                                        Remove
+                                    </button>
+                                </div>
                             </div>
                             <textarea
                                 value={question.QuestionText}
@@ -338,12 +349,21 @@ const ManageQuizzes = () => {
                                 <h4 className="font-semibold">Answers</h4>
                                 {question.Answers.map((answer) => (
                                     <div key={answer.Id} className="flex items-center space-x-2 mt-2">
-                                        <input
-                                            type="radio"
-                                            name={`correctAnswer-${question.Id}`}
-                                            checked={answer.IsCorrect}
-                                            onChange={() => handleCorrectAnswerChange(question.Id, answer.Id)}
-                                        />
+                                        {question.QuestionType === 'MSQ' ? (
+                                            <input
+                                                type="checkbox"
+                                                checked={answer.IsCorrect}
+                                                onChange={() => handleCorrectAnswerChangeMSQ(question.Id, answer.Id)}
+                                                className="form-checkbox h-5 w-5 text-blue-600"
+                                            />
+                                        ) : (
+                                            <input
+                                                type="radio"
+                                                name={`correctAnswer-${question.Id}`}
+                                                checked={answer.IsCorrect}
+                                                onChange={() => handleCorrectAnswerChange(question.Id, answer.Id)}
+                                            />
+                                        )}
                                         <input
                                             type="text"
                                             value={answer.AnswerText}

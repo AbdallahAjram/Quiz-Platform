@@ -14,6 +14,7 @@ interface AnswerOption {
 interface Question {
     Id: number;
     QuestionText: string;
+    QuestionType: string;
     answer_options: AnswerOption[]; // Relationship name from Laravel JSON
     ImagePath: string | null;
 }
@@ -40,7 +41,7 @@ const TakeQuiz = () => {
     // --- State Management ---
     const [quiz, setQuiz] = useState<Quiz | null>(null);
     const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
-    const [selectedAnswers, setSelectedAnswers] = useState<Record<number, number>>({});
+    const [selectedAnswers, setSelectedAnswers] = useState<Record<number, number | number[]>>({});
     const [timeLeft, setTimeLeft] = useState<number | null>(null);
     const [result, setResult] = useState<QuizAttemptResult | null>(null);
     const [isLoading, setIsLoading] = useState(true);
@@ -131,6 +132,16 @@ const TakeQuiz = () => {
         setSelectedAnswers(prev => ({ ...prev, [questionId]: answerId }));
     };
 
+    const handleMultiAnswerSelect = (questionId: number, answerId: number) => {
+        setSelectedAnswers(prev => {
+            const existingAnswers = prev[questionId] ? (Array.isArray(prev[questionId]) ? prev[questionId] as number[] : [prev[questionId] as number]) : [];
+            const newAnswers = existingAnswers.includes(answerId)
+                ? existingAnswers.filter(id => id !== answerId)
+                : [...existingAnswers, answerId];
+            return { ...prev, [questionId]: newAnswers };
+        });
+    };
+
     const handleNext = () => {
         if (currentQuestionIndex < totalQuestions - 1) {
             setCurrentQuestionIndex(prev => prev + 1);
@@ -139,7 +150,7 @@ const TakeQuiz = () => {
 
     const handleBack = () => {
         if (currentQuestionIndex > 0) {
-            setCurrentQuestionIndex(prev => prev - 1);
+            setCurrentQuestionIndex(prev => prev + 1);
         }
     };
 
@@ -147,10 +158,19 @@ const TakeQuiz = () => {
         if (isSubmitting || !quiz) return;
         setIsSubmitting(true);
 
-        const answersPayload = Object.entries(selectedAnswers).map(([questionId, answerOptionId]) => ({
-            QuestionId: parseInt(questionId, 10),
-            AnswerOptionId: answerOptionId,
-        }));
+        const answersPayload = Object.entries(selectedAnswers).map(([questionId, answer]) => {
+            const qId = parseInt(questionId, 10);
+            if (Array.isArray(answer)) {
+                return {
+                    QuestionId: qId,
+                    SelectedOptionIds: answer,
+                };
+            }
+            return {
+                QuestionId: qId,
+                SelectedOptionId: answer,
+            };
+        });
         
         try {
             const token = localStorage.getItem('token');
@@ -158,10 +178,7 @@ const TakeQuiz = () => {
                 `http://127.0.0.1:8000/api/quiz-attempts`, 
                 { 
                     QuizId: quiz.Id,
-                    Answers: answersPayload.map(answer => ({
-                        QuestionId: answer.QuestionId,
-                        SelectedOptionId: answer.AnswerOptionId,
-                    }))
+                    Answers: answersPayload
                 },
                 { headers: { 'Authorization': `Bearer ${token}` } }
             );
@@ -234,7 +251,7 @@ const TakeQuiz = () => {
                         </div>
 
                         {currentQuestion && (
-                            <div>
+                            <div className="max-h-[80vh] overflow-y-auto pr-2">
                                 <h2 className="text-xl sm:text-2xl font-semibold mb-6">{currentQuestion.QuestionText}</h2>
                                 {currentQuestion.ImagePath && (
                                     <div className="mb-6">
@@ -244,18 +261,25 @@ const TakeQuiz = () => {
                                 <div className="space-y-3">
                                     {/* --- ANSWER OPTIONS MAPPING --- */}
                                     {currentQuestion.answer_options && currentQuestion.answer_options.length > 0 ? (
-                                        currentQuestion.answer_options.map(option => (
-                                            <label key={option.Id} className={`block w-full text-left p-4 rounded-lg cursor-pointer transition-all transform hover:scale-105 border-2 ${selectedAnswers[currentQuestion.Id] === option.Id ? 'bg-blue-500 border-blue-300' : 'bg-gray-700 hover:bg-gray-600 border-transparent'}`}>
-                                                <input
-                                                    type="radio"
-                                                    name={`question-${currentQuestion.Id}`}
-                                                    className="sr-only"
-                                                    checked={selectedAnswers[currentQuestion.Id] === option.Id}
-                                                    onChange={() => handleAnswerSelect(currentQuestion.Id, option.Id)}
-                                                />
-                                                {option.AnswerText}
-                                            </label>
-                                        ))
+                                        currentQuestion.answer_options.map(option => {
+                                            const isMSQ = currentQuestion.QuestionType === 'MSQ';
+                                            const isChecked = isMSQ 
+                                                ? (selectedAnswers[currentQuestion.Id] as number[] || []).includes(option.Id)
+                                                : selectedAnswers[currentQuestion.Id] === option.Id;
+
+                                            return (
+                                                <label key={option.Id} className={`flex items-center w-full text-left p-4 rounded-lg cursor-pointer transition-all transform hover:scale-105 border-2 ${isChecked ? 'bg-blue-500 border-blue-300' : 'bg-gray-700 hover:bg-gray-600 border-transparent'}`}>
+                                                    <input
+                                                        type={isMSQ ? 'checkbox' : 'radio'}
+                                                        name={`question-${currentQuestion.Id}`}
+                                                        className={`form-${isMSQ ? 'checkbox' : 'radio'} h-5 w-5 text-blue-600 bg-gray-700 border-gray-500 focus:ring-blue-500`}
+                                                        checked={isChecked}
+                                                        onChange={() => isMSQ ? handleMultiAnswerSelect(currentQuestion.Id, option.Id) : handleAnswerSelect(currentQuestion.Id, option.Id)}
+                                                    />
+                                                    <span className="ml-3 text-white">{option.AnswerText}</span>
+                                                </label>
+                                            );
+                                        })
                                     ) : (
                                         <p className="text-gray-400">No answer options available for this question.</p>
                                     )}

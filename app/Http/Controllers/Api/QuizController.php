@@ -50,23 +50,27 @@ class QuizController extends Controller
         $stats = $quiz->course->enrollments->map(function ($enrollment) use ($quiz) {
             $user = $enrollment->user;
 
-            $highestScore = $user->quizAttempts()
-                ->where('QuizId', $quiz->Id)
-                ->max('Score');
+            $userAttempts = $user->quizAttempts()->where('QuizId', $quiz->Id);
+    
+            $attemptCount = $userAttempts->count();
+            $highestScore = $userAttempts->max('Score');
 
             $lastAttempt = $user->quizAttempts()
                 ->where('QuizId', $quiz->Id)
                 ->orderBy('CreatedAt', 'desc')
                 ->first();
 
-            $isCompleted = LessonCompletion::where('UserId', $user->Id)
-                ->where('LessonId', $quiz->LessonId)
-                ->exists();
+            $status = 'Not Started';
+            if ($highestScore > 0) {
+                $status = 'Completed';
+            } elseif ($attemptCount > 0) {
+                $status = 'In Progress';
+            }
 
             return [
                 'UserId' => $user->Id,
                 'StudentName' => $user->Name,
-                'Status' => $isCompleted ? 'Completed' : 'Not Started',
+                'Status' => $status,
                 'HighestScore' => $highestScore,
                 'LastAttemptDate' => $lastAttempt ? $lastAttempt->CreatedAt : null,
                 'LastAttemptId' => $lastAttempt ? $lastAttempt->Id : null,

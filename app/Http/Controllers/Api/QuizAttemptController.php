@@ -44,7 +44,9 @@ class QuizAttemptController extends Controller
             'QuizId' => 'required|integer|exists:quizzes,Id',
             'Answers' => 'required|array',
             'Answers.*.QuestionId' => 'required|integer|exists:questions,Id',
-            'Answers.*.SelectedOptionId' => 'required|integer|exists:answer_options,Id',
+            'Answers.*.SelectedOptionId' => 'nullable|integer|exists:answer_options,Id', // For MCQ
+            'Answers.*.SelectedOptionIds' => 'nullable|array|min:1', // For MSQ
+            'Answers.*.SelectedOptionIds.*' => 'integer|exists:answer_options,Id',
         ]);
 
         $quizId = $validatedData['QuizId'];
@@ -53,22 +55,25 @@ class QuizAttemptController extends Controller
         $quiz = \App\Models\Quiz::with('questions.answerOptions')->findOrFail($quizId);
         $user = $request->user();
 
-        $correctAnswersMap = [];
-        foreach ($quiz->questions as $question) {
-            foreach ($question->answerOptions as $option) {
-                if ($option->IsCorrect) {
-                    $correctAnswersMap[$question->Id] = $option->Id;
-                }
-            }
-        }
-
         $correctCount = 0;
         foreach ($userAnswers as $userAnswer) {
             $questionId = $userAnswer['QuestionId'];
-            $selectedOptionId = $userAnswer['SelectedOptionId']; // Changed from AnswerOptionId
+            $question = $quiz->questions->find($questionId);
 
-            if (isset($correctAnswersMap[$questionId]) && $correctAnswersMap[$questionId] === $selectedOptionId) {
-                $correctCount++;
+            if (!$question) continue;
+
+            $correctOptionIds = $question->answerOptions->where('IsCorrect', true)->pluck('Id')->sort()->values();
+
+            if ($question->QuestionType === 'MCQ' || $question->QuestionType === 'TF') {
+                $selectedOptionId = $userAnswer['SelectedOptionId'] ?? null;
+                if ($selectedOptionId && $correctOptionIds->count() === 1 && $correctOptionIds[0] == $selectedOptionId) {
+                    $correctCount++;
+                }
+            } elseif ($question->QuestionType === 'MSQ') {
+                $selectedOptionIds = collect($userAnswer['SelectedOptionIds'] ?? [])->map(fn($id) => (int)$id)->sort()->values();
+                if ($correctOptionIds->all() === $selectedOptionIds->all()) {
+                    $correctCount++;
+                }
             }
         }
 
@@ -81,7 +86,7 @@ class QuizAttemptController extends Controller
             DB::transaction(function () use ($quiz, $user, $score, $isPassed, $userAnswers, &$attempt) {
                 $attempt = QuizAttempt::create([
                     'QuizId' => $quiz->Id,
-                    'UserId' => $user->Id, // Use $user->Id consistently
+                    'UserId' => $user->Id,
                     'Score' => $score,
                     'AttemptDate' => now(),
                     'IsPassed' => $isPassed,
@@ -89,13 +94,25 @@ class QuizAttemptController extends Controller
 
                 $attemptAnswers = [];
                 foreach ($userAnswers as $userAnswer) {
-                    $attemptAnswers[] = [
-                        'AttemptId' => $attempt->Id,
-                        'QuestionId' => $userAnswer['QuestionId'],
-                        'AnswerId' => $userAnswer['SelectedOptionId'],
-                        'CreatedAt' => now(),
-                        'UpdatedAt' => now(),
-                    ];
+                    if (!empty($userAnswer['SelectedOptionId'])) { // MCQ/TF
+                        $attemptAnswers[] = [
+                            'AttemptId' => $attempt->Id,
+                            'QuestionId' => $userAnswer['QuestionId'],
+                            'AnswerId' => $userAnswer['SelectedOptionId'],
+                            'CreatedAt' => now(),
+                            'UpdatedAt' => now(),
+                        ];
+                    } elseif (!empty($userAnswer['SelectedOptionIds'])) { // MSQ
+                        foreach ($userAnswer['SelectedOptionIds'] as $selectedId) {
+                            $attemptAnswers[] = [
+                                'AttemptId' => $attempt->Id,
+                                'QuestionId' => $userAnswer['QuestionId'],
+                                'AnswerId' => $selectedId,
+                                'CreatedAt' => now(),
+                                'UpdatedAt' => now(),
+                            ];
+                        }
+                    }
                 }
                 \App\Models\QuizAttemptAnswer::insert($attemptAnswers);
 
@@ -118,7 +135,7 @@ class QuizAttemptController extends Controller
             ], 200);
 
         } catch (\Exception $e) {
-            Log::error('Quiz submission failed: ' . $e->getMessage());
+            Log::error('Quiz submission failed: ' . $e->getMessage(), ['trace' => $e->getTraceAsString()]);
             return response()->json(['message' => 'An error occurred during quiz submission.'], 500);
         }
     }

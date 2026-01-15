@@ -137,14 +137,18 @@ class EnrollmentController extends Controller
         $enrollments = Enrollment::where('UserId', $userId)->with([
             'course' => function ($query) use ($userId) {
                 $query->withCount('lessons');
+                $query->withCount('quizzes');
                 $query->withCount(['completions as completed_lessons_count' => function ($q) use ($userId) {
                     $q->where('UserId', $userId);
                 }]);
-                $query->with(['quizzes' => function($q) use ($userId) {
-                    $q->select('Id', 'CourseId', 'LessonId', 'Title'); // Select only what's needed
-                    $q->withMax(['attempts as highest_score' => function ($query) use ($userId) {
-                        $query->where('UserId', $userId);
-                    }], 'Score');
+                $query->withCount(['quizzes as completed_quizzes_count' => function ($q) use ($userId) {
+                    $q->whereHas('attempts', function ($attemptQuery) use ($userId) {
+                        $attemptQuery->where('UserId', $userId)
+                                     ->where('Score', '>', 0);
+                    });
+                }]);
+                $query->with(['quizzes.attempts' => function($q) use ($userId) {
+                    $q->where('UserId', $userId)->orderBy('Score', 'DESC');
                 }]);
             }
         ])->get();
@@ -155,17 +159,21 @@ class EnrollmentController extends Controller
             }
             $course = $enrollment->course;
             
-            // Rename for consistency.
-            $course->totalLessonsCount = $course->lessons_count;
-            $course->completedLessonsCount = $course->completed_lessons_count;
+            // Combine lesson and quiz counts for a holistic progress calculation.
+            $course->totalLessonsCount = $course->lessons_count + $course->quizzes_count;
+            $course->completedLessonsCount = $course->completed_lessons_count + $course->completed_quizzes_count;
             
+            $course->quizzes->each(function ($quiz) {
+                $quiz->highestAttempt = $quiz->attempts->first();
+            });
+
             // Separate lesson quizzes from the main course quiz
             $course->courseQuiz = $course->quizzes->whereNull('LessonId')->first();
             $course->lessonQuizzes = $course->quizzes->whereNotNull('LessonId')->values();
 
             // Clean up
-            unset($course->lessons_count);
-            unset($course->completed_lessons_count);
+            unset($course->lessons_count, $course->quizzes_count);
+            unset($course->completed_lessons_count, $course->completed_quizzes_count);
             unset($course->quizzes);
 
             return $course;

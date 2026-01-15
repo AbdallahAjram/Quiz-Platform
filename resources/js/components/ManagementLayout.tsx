@@ -39,7 +39,7 @@ const ManagementLayout = () => {
     const SidebarContent = () => (
         <>
             <div className="flex items-center justify-center h-16 bg-gray-900">
-                <span className="text-white font-bold uppercase">Academy</span>
+                <span className="text-white font-bold uppercase">Quizify Management</span>
             </div>
             <nav className="mt-6">
                 {sidebarLinks

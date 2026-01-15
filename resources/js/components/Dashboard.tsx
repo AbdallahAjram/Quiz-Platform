@@ -34,7 +34,7 @@ const Dashboard = () => {
         <div className="flex h-screen bg-gray-100">
             {/* Sidebar */}
             <aside className={`fixed inset-y-0 left-0 z-30 w-64 px-4 py-8 overflow-y-auto bg-gray-800 transform ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'} transition-transform duration-300 ease-in-out md:relative md:translate-x-0`}>
-                <Link to="/dashboard" className="text-3xl font-semibold text-center text-white">Quiz Platform</Link>
+                <Link to="/dashboard" className="text-3xl font-semibold text-center text-white">Quizify</Link>
                 <nav className="mt-10">
                     <NavLink to="/dashboard" icon={<Home className="w-5 h-5" />}>Dashboard</NavLink>
                     <NavLink to="courses/browse" icon={<BookOpen className="w-5 h-5" />}>Browse Courses</NavLink>

@@ -117,6 +117,7 @@ class CertificateController extends Controller
             'DownloadUrl' => null, // set later if you implement PDF generation
             'VerificationCode' => Str::upper(Str::random(12)),
             'GeneratedAt' => now(),
+            'Platform' => 'Quizify',
         ]);
 
         return response()->json([
