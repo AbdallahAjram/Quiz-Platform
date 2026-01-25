@@ -43,7 +43,7 @@ class CourseController extends Controller
             $data['CreatedBy'] = $user->Id;
         }
 
-        $data['IsPublished'] = false; 
+        $data['IsPublished'] = false;
 
         $course = Course::create($data);
 
@@ -61,8 +61,10 @@ class CourseController extends Controller
             $course->IsEnrolled = $course->enrollments()->where('UserId', $userId)->exists();
             if ($course->IsEnrolled) {
                 $firstLesson = $course->lessons()->orderBy('Order')->first();
-                $course->first_lesson_id = $firstLesson ? $firstLesson->Id : null;
+                $course->FirstLessonId = $firstLesson ? $firstLesson->Id : null;
             }
+            $course->Instructor = $course->instructor;
+            unset($course->instructor);
         });
 
         return response()->json($courses);
@@ -104,6 +106,7 @@ class CourseController extends Controller
             'Thumbnail' => ['nullable', 'string', 'max:255'],
             'EstimatedDuration' => ['nullable', 'integer', 'min:1'],
             'CreatedBy' => ['sometimes', 'integer', 'exists:users,Id'],
+            'CertificatesEnabled' => ['sometimes', 'boolean'],
         ]);
 
         $course->update($data);
@@ -113,7 +116,12 @@ class CourseController extends Controller
     public function destroy($Id)
     {
         $course = Course::findOrFail($Id);
-        
+        $user = auth()->user();
+
+        if ($user->Role !== 'Admin' && $course->CreatedBy !== $user->Id) {
+            return response()->json(['message' => 'You are not authorized to delete this course.'], 403);
+        }
+
         DB::transaction(function () use ($course) {
             $course->delete();
         });

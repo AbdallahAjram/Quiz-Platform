@@ -104,13 +104,18 @@ class QuizController extends Controller
     }
 
         public function showByCourse(Request $request, $courseId)
-
         {
+            $userId = auth()->id();
+            $quiz = Quiz::with(['attempts' => function ($query) use ($userId) {
+                $query->where('UserId', $userId)->orderBy('Score', 'DESC');
+            }])->where('CourseId', $courseId)->whereNull('LessonId')->first();
 
-            $quiz = Quiz::with('questions.answerOptions')->where('CourseId', $courseId)->whereNull('LessonId')->first();
+            if ($quiz) {
+                $quiz->highestAttempt = $quiz->attempts->first();
+                // unset($quiz->attempts);
+            }
 
             return response()->json(['quiz' => $quiz]);
-
         }
 
     

@@ -232,15 +232,26 @@ const LessonManagement = () => {
                 <div className="bg-white p-6 rounded-lg shadow-md">
                     <div className="flex justify-between items-center mb-4">
                         <h2 className="text-2xl font-bold">{editingLesson ? 'Edit Lesson' : 'Create New Lesson'}</h2>
-                        <button 
-                            type="button" 
-                            onClick={() => handleOpenAiModal()} 
-                            className="flex items-center px-4 py-2 text-sm font-semibold text-white bg-blue-600 rounded-lg hover:bg-blue-700"
-                            title="Generate a quiz for the entire course"
-                        >
-                            <Sparkles className="w-4 h-4 mr-2" />
-                            AI Course Quiz
-                        </button>
+                        <div className="flex items-center space-x-2">
+                            <button 
+                                type="button" 
+                                onClick={() => handleOpenAiModal()} 
+                                className="flex items-center px-4 py-2 text-sm font-semibold text-white bg-blue-600 rounded-lg hover:bg-blue-700"
+                                title="Generate a quiz for the entire course"
+                            >
+                                <Sparkles className="w-4 h-4 mr-2" />
+                                AI Course Quiz
+                            </button>
+                            <button 
+                                type="button" 
+                                onClick={handleManageCourseQuiz} 
+                                className="flex items-center px-4 py-2 text-sm font-semibold text-white bg-purple-600 rounded-lg hover:bg-purple-700"
+                                title="Manually create or edit the course-level quiz"
+                            >
+                                <Brain className="w-4 h-4 mr-2" />
+                                Create Course Quiz
+                            </button>
+                        </div>
                     </div>
                     <form onSubmit={handleCreateOrUpdateLesson} className="space-y-4">
                         {/* Form fields */}

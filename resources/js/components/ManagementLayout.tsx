@@ -31,7 +31,7 @@ const ManagementLayout = () => {
         { name: 'Courses', path: '/management/courses', icon: Book },
         { name: 'Quizzes', path: '/management/quizzes', icon: BrainCircuit },
         { name: 'Analytics', path: '/management/analytics', icon: BarChart },
-        { name: 'Certificates', path: '/certificates', icon: Award },
+        { name: 'Certificates', path: '/management/certificates', icon: Award },
         { name: 'Users', path: '/management/users', icon: Users },
         { name: 'Profile', path: '/management/profile', icon: User }
     ];
@@ -45,18 +45,18 @@ const ManagementLayout = () => {
                 {sidebarLinks
                     .filter(link => user.Role === 'Admin' || link.name !== 'Users')
                     .map((link) => (
-                    <NavLink
-                        key={link.name}
-                        to={link.path}
-                        className={({ isActive }) =>
-                            `flex items-center px-6 py-3 text-gray-100 rounded-lg ${isActive ? 'bg-gray-700' : 'hover:bg-gray-700'}`
-                        }
-                        onClick={() => setIsSidebarOpen(false)}
-                    >
-                        <link.icon className="w-6 h-6" />
-                        <span className="mx-3">{link.name}</span>
-                    </NavLink>
-                ))}
+                        <NavLink
+                            key={link.name}
+                            to={link.path}
+                            className={({ isActive }) =>
+                                `flex items-center px-6 py-3 text-gray-100 rounded-lg ${isActive ? 'bg-gray-700' : 'hover:bg-gray-700'}`
+                            }
+                            onClick={() => setIsSidebarOpen(false)}
+                        >
+                            <link.icon className="w-6 h-6" />
+                            <span className="mx-3">{link.name}</span>
+                        </NavLink>
+                    ))}
             </nav>
         </>
     );

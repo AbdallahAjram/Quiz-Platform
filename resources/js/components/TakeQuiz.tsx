@@ -25,6 +25,7 @@ interface Quiz {
     PassingScore: number;
     TimeLimit: number; // in minutes
     questions: Question[];
+    LessonId: number | null; // Added to distinguish quiz type
 }
 
 interface QuizAttemptResult {
@@ -48,6 +49,7 @@ const TakeQuiz = () => {
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [toast, setToast] = useState<{ message: string, type: 'success' | 'error' } | null>(null);
     const [redirectTimer, setRedirectTimer] = useState(5);
+    const [isLessonQuiz, setIsLessonQuiz] = useState(false);
 
     // --- Data Fetching ---
     useEffect(() => {
@@ -67,6 +69,7 @@ const TakeQuiz = () => {
                 const fetchedQuiz = response.data;
                 console.log('Quiz Data:', fetchedQuiz);
                 setQuiz(fetchedQuiz);
+                setIsLessonQuiz(fetchedQuiz.LessonId !== null);
 
                 // --- TIMER ACTIVATION ---
                 if (fetchedQuiz && typeof fetchedQuiz.TimeLimit === 'number') {
@@ -78,7 +81,7 @@ const TakeQuiz = () => {
             } catch (error: any) {
                 if (error.response && error.response.status === 403) {
                     setToast({ message: error.response.data.message || 'You have not met the prerequisites to take this quiz.', type: 'error' });
-                    navigate('/dashboard/courses');
+                    navigate('/dashboard');
                 } else {
                     setToast({ message: 'Failed to fetch quiz data.', type: 'error' });
                 }
@@ -91,7 +94,8 @@ const TakeQuiz = () => {
 
     // --- Timer Countdown Logic ---
     useEffect(() => {
-        if (result) {
+        // Redirect only on passed final exam
+        if (result && result.IsPassed && !isLessonQuiz) {
             const timer = setInterval(() => {
                 setRedirectTimer(prev => {
                     if (prev <= 1) {
@@ -102,10 +106,10 @@ const TakeQuiz = () => {
                     return prev - 1;
                 });
             }, 1000);
-
             return () => clearInterval(timer);
         }
-    }, [result, navigate]);
+    }, [result, isLessonQuiz, navigate]);
+
 
     useEffect(() => {
         if (isSubmitting || result) return; // Stop timer if submitting or finished
@@ -150,8 +154,20 @@ const TakeQuiz = () => {
 
     const handleBack = () => {
         if (currentQuestionIndex > 0) {
-            setCurrentQuestionIndex(prev => prev + 1);
+            setCurrentQuestionIndex(prev => prev - 1);
         }
+    };
+
+    const handleRetake = () => {
+        setResult(null);
+        setSelectedAnswers({});
+        setCurrentQuestionIndex(0);
+        if (quiz && typeof quiz.TimeLimit === 'number') {
+            setTimeLeft(quiz.TimeLimit * 60);
+        } else {
+            setTimeLeft(null);
+        }
+        setIsSubmitting(false);
     };
 
     const handleSubmit = async () => {
@@ -184,8 +200,13 @@ const TakeQuiz = () => {
             );
             setResult(response.data.data);
             setToast({ message: 'Quiz submitted successfully!', type: 'success' });
-        } catch (error) {
-            setToast({ message: 'Failed to submit quiz.', type: 'error' });
+        } catch (error: any) {
+             if (error.response && error.response.status === 403) {
+                setToast({ message: error.response.data.message, type: 'error' });
+                setResult({ IsPassed: true, Score: 100, PassingScore: quiz.PassingScore, AttemptId: 0 }); 
+            } else {
+                setToast({ message: 'Failed to submit quiz.', type: 'error' });
+            }
         } finally {
             setIsSubmitting(false);
         }
@@ -208,6 +229,33 @@ const TakeQuiz = () => {
         return <div className="flex items-center justify-center min-h-screen bg-gray-900 text-white">Quiz not found or is empty.</div>;
     }
     
+    const renderResultButtons = () => {
+        if (!result) return null;
+
+        if (isLessonQuiz) {
+            return (
+                <button onClick={handleRetake} className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded-lg">
+                    {result.IsPassed ? 'Retake Quiz' : 'Try Again'}
+                </button>
+            );
+        } else { // Final Exam
+            if (result.IsPassed) {
+                return (
+                    <button disabled className="bg-gray-500 text-gray-300 font-bold py-3 px-6 rounded-lg cursor-not-allowed">
+                        Exam Completed
+                    </button>
+                );
+            } else {
+                return (
+                    <button onClick={handleRetake} className="bg-red-600 hover:bg-red-700 text-white font-bold py-3 px-6 rounded-lg">
+                        Try Again
+                    </button>
+                );
+            }
+        }
+    };
+
+
     return (
         <div className="min-h-screen bg-gray-800 p-4 sm:p-8 flex items-center justify-center">
             <div className="w-full max-w-2xl">
@@ -224,14 +272,19 @@ const TakeQuiz = () => {
                             Passing Score: {result.PassingScore}%
                         </p>
                         {result.IsPassed ? (
-                            <p className="text-2xl text-green-300 mb-8">Congratulations, you passed!</p>
+                             <p className="text-2xl text-green-300 mb-8">{isLessonQuiz ? 'Practice Complete!' : 'Congratulations, you passed the final exam!'}</p>
                         ) : (
                             <p className="text-2xl text-red-300 mb-8">You did not pass. Better luck next time!</p>
                         )}
-                        <button onClick={() => navigate('/dashboard')} className="bg-gray-600 hover:bg-gray-700 text-white font-bold py-3 px-6 rounded-lg">
-                            Back to Dashboard
-                        </button>
-                        <p className="text-sm text-gray-400 mt-4">Redirecting to dashboard in {redirectTimer} seconds...</p>
+                        <div className="flex justify-center items-center space-x-4">
+                            {renderResultButtons()}
+                            <button onClick={() => navigate('/dashboard')} className="bg-gray-600 hover:bg-gray-700 text-white font-bold py-3 px-6 rounded-lg">
+                                My Courses
+                            </button>
+                        </div>
+                        {result.IsPassed && !isLessonQuiz && (
+                            <p className="text-sm text-gray-400 mt-4">Redirecting to your courses in {redirectTimer} seconds...</p>
+                        )}
                     </div>
                 ) : (
                     <div className="bg-black bg-opacity-50 backdrop-blur-lg p-6 sm:p-8 rounded-xl shadow-2xl text-white">
@@ -268,7 +321,7 @@ const TakeQuiz = () => {
                                                 : selectedAnswers[currentQuestion.Id] === option.Id;
 
                                             return (
-                                                <label key={option.Id} className={`flex items-center w-full text-left p-4 rounded-lg cursor-pointer transition-all transform hover:scale-105 border-2 ${isChecked ? 'bg-blue-500 border-blue-300' : 'bg-gray-700 hover:bg-gray-600 border-transparent'}`}>
+                                                <label key={option.Id} className={`flex items-center w-full text-left p-4 rounded-lg cursor-pointer transition-colors duration-200 border-2 ${isChecked ? 'bg-blue-500 border-blue-300' : 'bg-gray-700 hover:bg-gray-600 border-transparent'}`}>
                                                     <input
                                                         type={isMSQ ? 'checkbox' : 'radio'}
                                                         name={`question-${currentQuestion.Id}`}

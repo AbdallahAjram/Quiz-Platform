@@ -41,17 +41,17 @@ class LessonController extends Controller
     public function getLessonsForCourse($CourseId)
     {
         $userId = auth()->id();
-        $lessons = Lesson::with(['quiz' => function ($query) use ($userId) {
-            $query->withExists(['attempts as has_attempted' => function ($q) use ($userId) {
-                $q->where('UserId', $userId);
-            }]);
-            $query->addSelect(['last_attempt_id' => \App\Models\QuizAttempt::select('Id')
-                ->whereColumn('QuizId', 'quizzes.Id')
-                ->where('UserId', $userId)
-                ->orderByDesc('CreatedAt')
-                ->limit(1)
-            ]);
+        $lessons = Lesson::with(['quiz.attempts' => function ($query) use ($userId) {
+            $query->where('UserId', $userId)->orderBy('Score', 'DESC');
         }])->where('CourseId', $CourseId)->orderBy('Order')->get();
+
+        $lessons->each(function ($lesson) {
+            if ($lesson->quiz) {
+                $lesson->quiz->highestAttempt = $lesson->quiz->attempts->first();
+                // unset($lesson->quiz->attempts); // Clean up to reduce payload size
+            }
+        });
+
         return response()->json($lessons);
     }
 

@@ -55,6 +55,18 @@ class QuizAttemptController extends Controller
         $quiz = \App\Models\Quiz::with('questions.answerOptions')->findOrFail($quizId);
         $user = $request->user();
 
+        // A final exam is a quiz with no LessonId. Prevent retakes if already passed.
+        if ($quiz->LessonId === null) {
+            $hasPassedFinalExam = QuizAttempt::where('QuizId', $quizId)
+                ->where('UserId', $user->Id)
+                ->where('IsPassed', true)
+                ->exists();
+
+            if ($hasPassedFinalExam) {
+                return response()->json(['message' => 'You have already passed the final exam for this course and cannot retake it.'], 403);
+            }
+        }
+
         $correctCount = 0;
         foreach ($userAnswers as $userAnswer) {
             $questionId = $userAnswer['QuestionId'];

@@ -24,11 +24,16 @@ interface AttemptDetails {
     Questions: AttemptQuestion[];
 }
 
+interface HighestAttempt {
+    Id: number;
+    Score: number;
+    IsPassed: boolean;
+}
+
 interface Quiz {
     Id: number;
     Title: string;
-    has_attempted: boolean;
-    last_attempt_id: number | null;
+    highestAttempt: HighestAttempt | null;
 }
 
 interface Lesson {
@@ -196,7 +201,7 @@ const LessonViewer = () => {
             <div className="w-80 bg-white border-r flex flex-col">
                  <div className="p-6 border-b">
                     <Link to="/dashboard" className="text-sm text-blue-600 hover:underline">
-                        &larr; Back to Dashboard
+                        &larr; Back to My Courses
                     </Link>
                     <h2 className="text-xl font-bold mt-4">Lessons</h2>
                 </div>
@@ -216,25 +221,27 @@ const LessonViewer = () => {
                     <div className="p-4 border-t">
                         <h3 className="text-lg font-bold mb-2 text-center">Final Exam</h3>
                         {lessons.length > 0 && completions.length >= lessons.length ? (
-                            courseQuiz.has_attempted ? (
+                            courseQuiz.highestAttempt?.IsPassed ? (
                                 <div className="space-y-2">
                                     <button
                                         disabled
-                                        className="w-full px-4 py-3 font-bold text-white bg-green-600 rounded-lg cursor-not-allowed"
+                                        className="w-full px-4 py-3 font-bold text-white bg-green-500 rounded-lg cursor-not-allowed"
                                     >
                                         Exam Completed
                                     </button>
-                                    <button
-                                        onClick={() => handleViewAnswersClick(courseQuiz.last_attempt_id!)}
-                                        className="w-full text-center block px-4 py-2 font-bold text-white bg-blue-600 rounded-lg hover:bg-blue-700"
-                                    >
-                                        View Your Answers
-                                    </button>
+                                    {courseQuiz.highestAttempt &&
+                                        <button
+                                            onClick={() => handleViewAnswersClick(courseQuiz.highestAttempt!.Id)}
+                                            className="w-full text-center block px-4 py-2 font-bold text-white bg-blue-600 rounded-lg hover:bg-blue-700"
+                                        >
+                                            View Your Answers
+                                        </button>
+                                    }
                                 </div>
                             ) : (
                                 <Link
                                     to={`/quizzes/take/${courseQuiz.Id}`}
-                                    className="w-full text-center block px-4 py-3 font-bold text-white bg-green-600 rounded-lg hover:bg-green-700"
+                                    className="w-full text-center block px-4 py-3 font-bold text-white bg-indigo-600 rounded-lg hover:bg-indigo-700"
                                 >
                                     Take Final Exam
                                 </Link>
@@ -306,29 +313,23 @@ const LessonViewer = () => {
                                 <div className="p-4 border-t border-gray-200">
                                     <h3 className="text-lg font-bold mb-2">Lesson Quiz</h3>
                                     {isCompleted(currentLesson) ? (
-                                        currentLesson.quiz.has_attempted ? (
-                                            <div className="space-y-2">
-                                                <button
-                                                    disabled
-                                                    className="w-full px-4 py-3 font-bold text-white bg-green-600 rounded-lg cursor-not-allowed"
-                                                >
-                                                    Quiz Completed
-                                                </button>
-                                                <button
-                                                    onClick={() => handleViewAnswersClick(currentLesson.quiz!.last_attempt_id!)}
-                                                    className="w-full text-center block px-4 py-2 font-bold text-white bg-blue-600 rounded-lg hover:bg-blue-700"
-                                                >
-                                                    View Answers
-                                                </button>
-                                            </div>
-                                        ) : (
+                                        <div>
                                             <Link 
                                                 to={`/quizzes/take/${currentLesson.quiz.Id}`}
                                                 className="px-8 py-3 font-bold text-white bg-indigo-600 rounded-lg hover:bg-indigo-700 text-lg"
                                             >
-                                                Take the Quiz!
+                                                {currentLesson.quiz.highestAttempt ? 'Retake Quiz' : 'Take the Quiz!'}
                                             </Link>
-                                        )
+                                            <p className="text-xs text-gray-500 mt-2">You can retake this quiz for practice. The highest score will be kept.</p>
+                                            {currentLesson.quiz.highestAttempt &&
+                                                <button
+                                                    onClick={() => handleViewAnswersClick(currentLesson.quiz!.highestAttempt!.Id)}
+                                                    className="w-full text-center block mt-2 px-4 py-2 font-bold text-white bg-blue-600 rounded-lg hover:bg-blue-700"
+                                                >
+                                                    View Last Attempt
+                                                </button>
+                                            }
+                                        </div>
                                     ) : (
                                         <div className="flex items-center space-x-3">
                                             <button

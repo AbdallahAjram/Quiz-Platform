@@ -21,6 +21,9 @@ import EngagementInsights from "./EngagementInsights";
 import QuizStudentStats from "./QuizStudentStats";
 import QuizManagement from "./QuizManagement";
 import TakeQuiz from "./TakeQuiz";
+import Certificates from "./Certificates";
+import CertificateVerification from "./CertificateVerification";
+import CertificateManagement from "./CertificateManagement";
 
 import LessonViewer from "./LessonViewer";
 
@@ -42,6 +45,7 @@ const App = () => {
                     <Route path="courses" element={<MyCourses />} />
                     <Route path="profile" element={<Profile />} />
                     <Route path="courses/browse" element={<BrowseCourses />} />
+                    <Route path="certificates" element={<Certificates />} />
                 </Route>
                 <Route
                     path="/management"
@@ -59,6 +63,7 @@ const App = () => {
                     <Route path="courses/edit/:Id" element={<EditCourse />} />
                     <Route path="courses/:courseId/lessons" element={<LessonManagement />} />
                     <Route path="analytics" element={<EngagementInsights />} />
+                    <Route path="certificates" element={<CertificateManagement />} />
                     <Route path="quizzes" element={<QuizManagement />} />
                     <Route path="quizzes/:lessonId" element={<ManageQuizzes />} />
                     <Route path="quizzes/course/:courseId" element={<ManageQuizzes />} />
@@ -68,6 +73,9 @@ const App = () => {
                 <Route path="/courses/:courseId/lessons" element={<ProtectedRoute roles={['Student']}><LessonViewer /></ProtectedRoute>} />
                 <Route path="/courses/:courseId/lessons/:lessonId" element={<ProtectedRoute roles={['Student']}><LessonViewer /></ProtectedRoute>} />
                 <Route path="/quizzes/take/:quizId" element={<ProtectedRoute roles={['Student']}><TakeQuiz /></ProtectedRoute>} />
+                <Route path="/courses/:courseId/lessons/:lessonId" element={<ProtectedRoute roles={['Student']}><LessonViewer /></ProtectedRoute>} />
+                <Route path="/quizzes/take/:quizId" element={<ProtectedRoute roles={['Student']}><TakeQuiz /></ProtectedRoute>} />
+                <Route path="/verify-certificate" element={<CertificateVerification />} />
                 <Route path="*" element={<Navigate to="/login" />} />
             </Routes>
         </Router>

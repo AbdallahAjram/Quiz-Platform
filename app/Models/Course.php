@@ -31,6 +31,7 @@ class Course extends Model
         'EstimatedDuration',
         'CreatedBy',
         'IsPublished',
+        'CertificatesEnabled',
     ];
 
     protected $casts = [
@@ -40,6 +41,7 @@ class Course extends Model
         'UpdatedAt' => 'datetime',
         'CreatedBy' => 'integer',
         'IsPublished' => 'boolean',
+        'CertificatesEnabled' => 'boolean',
     ];
 
     protected static function boot()
@@ -66,33 +68,39 @@ class Course extends Model
         return $this->belongsTo(User::class, 'CreatedBy', 'Id');
     }
 
-    public function lessons() {
-    return $this->hasMany(Lesson::class, 'CourseId', 'Id');
-}
+    public function lessons()
+    {
+        return $this->hasMany(Lesson::class, 'CourseId', 'Id');
+    }
 
-public function quizzes() {
-    return $this->hasMany(Quiz::class, 'CourseId', 'Id');
-}
+    public function quizzes()
+    {
+        return $this->hasMany(Quiz::class, 'CourseId', 'Id');
+    }
 
-public function enrollments() {
-    return $this->hasMany(Enrollment::class, 'CourseId', 'Id');
-}
+    public function enrollments()
+    {
+        return $this->hasMany(Enrollment::class, 'CourseId', 'Id');
+    }
 
-public function announcements() {
-    return $this->hasMany(Announcement::class, 'CourseId', 'Id');
-}
+    public function announcements()
+    {
+        return $this->hasMany(Announcement::class, 'CourseId', 'Id');
+    }
 
-public function comments() {
-    return $this->hasMany(Comment::class, 'CourseId', 'Id');
-}
+    public function comments()
+    {
+        return $this->hasMany(Comment::class, 'CourseId', 'Id');
+    }
 
-public function certificates() {
-    return $this->hasMany(Certificate::class, 'CourseId', 'Id');
-}
+    public function certificates()
+    {
+        return $this->hasMany(Certificate::class, 'CourseId', 'Id');
+    }
 
-public function completions(): \Illuminate\Database\Eloquent\Relations\HasManyThrough
-{
-    return $this->hasManyThrough(LessonCompletion::class, Lesson::class, 'CourseId', 'LessonId', 'Id', 'Id');
-}
+    public function completions(): \Illuminate\Database\Eloquent\Relations\HasManyThrough
+    {
+        return $this->hasManyThrough(LessonCompletion::class, Lesson::class, 'CourseId', 'LessonId', 'Id', 'Id');
+    }
 
 }

@@ -1,12 +1,33 @@
 import React from 'react';
 import { useNavigate, Link, Outlet } from 'react-router-dom';
 import axios from 'axios';
-import { BookOpen, CheckSquare, BarChart3, User, LogOut, Menu, X, Home } from 'lucide-react';
+import { BookOpen, CheckSquare, BarChart3, User, LogOut, Menu, X, Home, Award } from 'lucide-react';
 
 const Dashboard = () => {
     const navigate = useNavigate();
     const token = localStorage.getItem('token');
     const [sidebarOpen, setSidebarOpen] = React.useState(false);
+    const [user, setUser] = React.useState({ FullName: '' });
+
+    React.useEffect(() => {
+        const fetchUser = async () => {
+            try {
+                const response = await axios.get('http://127.0.0.1:8000/api/profile', {
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+                setUser(response.data);
+            } catch (error) {
+                console.error('Failed to fetch user', error);
+            }
+        };
+
+        if (token) {
+            fetchUser();
+        }
+    }, [token]);
+
 
     const handleLogout = async () => {
         try {
@@ -36,9 +57,14 @@ const Dashboard = () => {
             <aside className={`fixed inset-y-0 left-0 z-30 w-64 px-4 py-8 overflow-y-auto bg-gray-800 transform ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'} transition-transform duration-300 ease-in-out md:relative md:translate-x-0`}>
                 <Link to="/dashboard" className="text-3xl font-semibold text-center text-white">Quizify</Link>
                 <nav className="mt-10">
-                    <NavLink to="/dashboard" icon={<Home className="w-5 h-5" />}>Dashboard</NavLink>
-                    <NavLink to="courses/browse" icon={<BookOpen className="w-5 h-5" />}>Browse Courses</NavLink>
-                    <NavLink to="profile" icon={<User className="w-5 h-5" />}>Profile</NavLink>
+                    <NavLink to="/dashboard" icon={<Home className="w-5 h-5" />}
+                    >Dashboard</NavLink>
+                    <NavLink to="courses/browse" icon={<BookOpen className="w-5 h-5" />}
+                    >Browse Courses</NavLink>
+                    
+                    <NavLink to="certificates" icon={<Award className="w-5 h-5" />}>Certificates</NavLink>
+                    <NavLink to="profile" icon={<User className="w-5 h-5" />}
+                        >Profile</NavLink>                
                 </nav>
             </aside>
 
@@ -50,13 +76,16 @@ const Dashboard = () => {
                             <Menu className="w-6 h-6" />
                         </button>
                     </div>
-                    <button
-                        onClick={handleLogout}
-                        className="flex items-center px-4 py-2 font-semibold text-white bg-red-500 rounded-md hover:bg-red-600"
-                    >
-                        <LogOut className="w-5 h-5 mr-2" />
-                        Logout
-                    </button>
+                    <div className="flex items-center">
+                        <span className="mr-4 font-semibold text-gray-700">Hello, {user.FullName}!</span>
+                        <button
+                            onClick={handleLogout}
+                            className="flex items-center px-4 py-2 font-semibold text-white bg-red-500 rounded-md hover:bg-red-600"
+                        >
+                            <LogOut className="w-5 h-5 mr-2" />
+                            Logout
+                        </button>
+                    </div>
                 </header>
 
                 <main className="flex-1 overflow-x-hidden overflow-y-auto bg-gray-100 p-6">

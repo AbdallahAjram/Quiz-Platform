@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Models\Certificate;
 use App\Models\Enrollment;
 use App\Models\LessonCompletion;
 use App\Models\QuizAttempt;
@@ -132,9 +133,11 @@ class EnrollmentController extends Controller
 
     public function myCourses(Request $request)
     {
-        $userId = $request->user()->Id;
+        $user = $request->user();
+        $userId = $user->Id;
 
         $enrollments = Enrollment::where('UserId', $userId)->with([
+            'course.instructor',
             'course' => function ($query) use ($userId) {
                 $query->withCount('lessons');
                 $query->withCount('quizzes');
@@ -143,25 +146,35 @@ class EnrollmentController extends Controller
                 }]);
                 $query->withCount(['quizzes as completed_quizzes_count' => function ($q) use ($userId) {
                     $q->whereHas('attempts', function ($attemptQuery) use ($userId) {
-                        $attemptQuery->where('UserId', $userId)
-                                     ->where('Score', '>', 0);
+                        $attemptQuery->where('UserId', 'LIKE', $userId)
+                                     ->where('IsPassed', true);
                     });
                 }]);
                 $query->with(['quizzes.attempts' => function($q) use ($userId) {
-                    $q->where('UserId', $userId)->orderBy('Score', 'DESC');
+                    $q->where('UserId', 'LIKE', $userId)
+                      ->select('Id', 'QuizId', 'Score', 'IsPassed') // Explicitly select columns
+                      ->orderBy('Score', 'DESC');
                 }]);
             }
         ])->get();
 
-        $courses = $enrollments->map(function ($enrollment) {
+        $courses = $enrollments->map(function ($enrollment) use ($user) {
             if (!$enrollment->course) {
                 return null;
             }
             $course = $enrollment->course;
+            $course->Instructor = $course->instructor;
+            unset($course->instructor);
             
             // Combine lesson and quiz counts for a holistic progress calculation.
-            $course->totalLessonsCount = $course->lessons_count + $course->quizzes_count;
-            $course->completedLessonsCount = $course->completed_lessons_count + $course->completed_quizzes_count;
+            $course->totalLessonsCount = $course->lessons_count; // Only count lessons
+            $course->completedLessonsCount = $course->completed_lessons_count;
+
+            if ($course->totalLessonsCount > 0) {
+                $course->ProgressPercentage = ($course->completedLessonsCount / $course->totalLessonsCount) * 100;
+            } else {
+                $course->ProgressPercentage = 0;
+            }
             
             $course->quizzes->each(function ($quiz) {
                 $quiz->highestAttempt = $quiz->attempts->first();
@@ -170,6 +183,13 @@ class EnrollmentController extends Controller
             // Separate lesson quizzes from the main course quiz
             $course->courseQuiz = $course->quizzes->whereNull('LessonId')->first();
             $course->lessonQuizzes = $course->quizzes->whereNotNull('LessonId')->values();
+            
+            // Set eligibility flag
+            $course->isEligibleForCertificate = $user->isEligibleForCertificate($course->Id);
+
+            $certificate = Certificate::where('CourseId', $course->Id)->where('UserId', $user->Id)->first();
+            $course->CertificateId = $certificate ? $certificate->Id : null;
+            $course->DownloadUrl = $certificate ? $certificate->DownloadUrl : null;
 
             // Clean up
             unset($course->lessons_count, $course->quizzes_count);
