@@ -51,7 +51,7 @@ class QuizController extends Controller
             $user = $enrollment->user;
 
             $userAttempts = $user->quizAttempts()->where('QuizId', $quiz->Id);
-    
+
             $attemptCount = $userAttempts->count();
             $highestScore = $userAttempts->max('Score');
 
@@ -103,417 +103,468 @@ class QuizController extends Controller
         return response()->json($quiz);
     }
 
-        public function showByCourse(Request $request, $courseId)
-        {
-            $userId = auth()->id();
-            $quiz = Quiz::with(['attempts' => function ($query) use ($userId) {
+    public function showByCourse(Request $request, $courseId)
+    {
+        $userId = auth()->id();
+        $quiz = Quiz::with([
+            'attempts' => function ($query) use ($userId) {
                 $query->where('UserId', $userId)->orderBy('Score', 'DESC');
-            }])->where('CourseId', $courseId)->whereNull('LessonId')->first();
+            }
+        ])->where('CourseId', $courseId)->whereNull('LessonId')->first();
 
-            if ($quiz) {
-                $quiz->highestAttempt = $quiz->attempts->first();
-                // unset($quiz->attempts);
+        if ($quiz) {
+            $quiz->highestAttempt = $quiz->attempts->first();
+            // unset($quiz->attempts);
+        }
+
+        return response()->json(['quiz' => $quiz]);
+    }
+
+
+
+    public function showByLesson(Request $request, $lessonId)
+    {
+
+        $quiz = Quiz::with('questions.answerOptions')->where('LessonId', $lessonId)->first();
+
+        return response()->json(['quiz' => $quiz]);
+
+    }
+
+
+
+    public function storeOrUpdateByCourse(Request $request, $courseId)
+    {
+
+        return $this->_storeOrUpdateQuiz($request, $courseId, null);
+
+    }
+
+
+
+    public function storeOrUpdateByLesson(Request $request, $lessonId)
+    {
+
+        return $this->_storeOrUpdateQuiz($request, null, $lessonId);
+
+    }
+
+
+
+    private function _storeOrUpdateQuiz(Request $request, $courseId, $lessonId)
+    {
+
+
+
+        $quizData = json_decode($request->input('Quiz'), true);
+
+
+
+        $questionsData = json_decode($request->input('Questions'), true);
+
+
+
+
+
+
+
+        if ($lessonId && !$courseId) {
+
+
+
+            $lesson = Lesson::find($lessonId);
+
+
+
+            if ($lesson) {
+
+
+
+                $courseId = $lesson->CourseId;
+
+
+
             }
 
-            return response()->json(['quiz' => $quiz]);
-        }
 
-    
-
-        public function showByLesson(Request $request, $lessonId)
-
-        {
-
-            $quiz = Quiz::with('questions.answerOptions')->where('LessonId', $lessonId)->first();
-
-            return response()->json(['quiz' => $quiz]);
 
         }
 
-    
 
-        public function storeOrUpdateByCourse(Request $request, $courseId)
 
-        {
 
-            return $this->_storeOrUpdateQuiz($request, $courseId, null);
 
-        }
 
-    
 
-        public function storeOrUpdateByLesson(Request $request, $lessonId)
+        if (!$courseId) {
 
-        {
 
-            return $this->_storeOrUpdateQuiz($request, null, $lessonId);
+
+            return response()->json(['message' => 'CourseId is required.'], 422);
+
+
 
         }
 
-    
 
-                private function _storeOrUpdateQuiz(Request $request, $courseId, $lessonId)
 
-    
 
-                {
 
-    
 
-                    $quizData = json_decode($request->input('Quiz'), true);
 
-    
+        DB::transaction(function () use ($request, $quizData, $questionsData, $courseId, $lessonId) {
 
-                    $questionsData = json_decode($request->input('Questions'), true);
 
-    
 
-        
+            $quiz = Quiz::updateOrCreate(
 
-    
 
-                    if ($lessonId && !$courseId) {
 
-    
+                ['Id' => $quizData['Id'] ?? null],
 
-                        $lesson = Lesson::find($lessonId);
 
-    
 
-                        if ($lesson) {
+                [
 
-    
 
-                            $courseId = $lesson->CourseId;
 
-    
+                    'CourseId' => $courseId,
 
-                        }
 
-    
+
+                    'LessonId' => $lessonId,
+
+
+
+                    'Title' => $quizData['Title'],
+
+
+
+                    'PassingScore' => $quizData['PassingScore'],
+
+
+
+                    'TimeLimit' => $quizData['TimeLimit'],
+
+
+
+                ]
+
+
+
+            );
+
+
+
+
+
+
+
+            foreach ($questionsData as $index => $questionData) {
+
+
+
+                $imagePath = $questionData['ImagePath'] ?? null;
+
+
+
+
+
+
+
+                // Handle image upload
+
+
+
+                if ($request->hasFile("questions.{$index}.image")) {
+
+
+
+                    $request->validate([
+
+
+
+                        "questions.{$index}.image" => 'image|mimes:jpg,png,webp|max:2048',
+
+
+
+                    ]);
+
+
+
+                    // Delete old image if it exists
+
+
+
+                    if ($imagePath && file_exists(storage_path('app/public/' . $imagePath))) {
+
+
+
+                        unlink(storage_path('app/public/' . $imagePath));
+
+
 
                     }
 
-    
 
-        
 
-    
+                    $file = $request->file("questions.{$index}.image");
 
-                    if (!$courseId) {
 
-    
 
-                        return response()->json(['message' => 'CourseId is required.'], 422);
+                    $path = $file->store('uploads/questions', 'public');
 
-    
 
-                    }
 
-    
+                    $imagePath = $path;
 
-            
 
-    
 
-                    DB::transaction(function () use ($request, $quizData, $questionsData, $courseId, $lessonId) {
+                } elseif (isset($questionData['ImagePath']) && $questionData['ImagePath'] === 'DELETE') {
 
-    
 
-                        $quiz = Quiz::updateOrCreate(
 
-    
+                    // Handle image deletion
 
-                            ['Id' => $quizData['Id'] ?? null],
 
-    
 
-                            [
+                    $existingQuestion = Question::find($questionData['Id'] ?? null);
 
-    
 
-                                'CourseId' => $courseId,
 
-    
+                    if ($existingQuestion && $existingQuestion->ImagePath) {
 
-                                'LessonId' => $lessonId,
 
-    
 
-                                'Title' => $quizData['Title'],
+                        if (file_exists(storage_path('app/public/' . $existingQuestion->ImagePath))) {
 
-    
 
-                                'PassingScore' => $quizData['PassingScore'],
 
-    
+                            unlink(storage_path('app/public/' . $existingQuestion->ImagePath));
 
-                                'TimeLimit' => $quizData['TimeLimit'],
 
-    
-
-                            ]
-
-    
-
-                        );
-
-    
-
-            
-
-    
-
-                        foreach ($questionsData as $index => $questionData) {
-
-    
-
-                            $imagePath = $questionData['ImagePath'] ?? null;
-
-    
-
-        
-
-    
-
-                            // Handle image upload
-
-    
-
-                            if ($request->hasFile("questions.{$index}.image")) {
-
-    
-
-                                $request->validate([
-
-    
-
-                                    "questions.{$index}.image" => 'image|mimes:jpg,png,webp|max:2048',
-
-    
-
-                                ]);
-
-    
-
-                                // Delete old image if it exists
-
-    
-
-                                if ($imagePath && file_exists(storage_path('app/public/' . $imagePath))) {
-
-    
-
-                                    unlink(storage_path('app/public/' . $imagePath));
-
-    
-
-                                }
-
-    
-
-                                $file = $request->file("questions.{$index}.image");
-
-    
-
-                                $path = $file->store('uploads/questions', 'public');
-
-    
-
-                                $imagePath = $path;
-
-    
-
-                            } elseif (isset($questionData['ImagePath']) && $questionData['ImagePath'] === 'DELETE') {
-
-    
-
-                                // Handle image deletion
-
-    
-
-                                $existingQuestion = Question::find($questionData['Id'] ?? null);
-
-    
-
-                                if ($existingQuestion && $existingQuestion->ImagePath) {
-
-    
-
-                                    if (file_exists(storage_path('app/public/' . $existingQuestion->ImagePath))) {
-
-    
-
-                                        unlink(storage_path('app/public/' . $existingQuestion->ImagePath));
-
-    
-
-                                    }
-
-    
-
-                                }
-
-    
-
-                                $imagePath = null;
-
-    
-
-                            }
-
-    
-
-        
-
-    
-
-                            $question = Question::updateOrCreate(
-
-    
-
-                                ['Id' => $questionData['Id'] ?? null],
-
-    
-
-                                [
-
-    
-
-                                    'QuizId' => $quiz->Id,
-
-    
-
-                                    'QuestionText' => $questionData['QuestionText'],
-
-    
-
-                                    'QuestionType' => $questionData['QuestionType'],
-
-    
-
-                                    'Order' => $questionData['Order'],
-
-    
-
-                                    'ImagePath' => $imagePath,
-
-    
-
-                                ]
-
-    
-
-                            );
-
-    
-
-            
-
-    
-
-                            foreach ($questionData['Answers'] as $answerData) {
-
-    
-
-                                AnswerOption::updateOrCreate(
-
-    
-
-                                    ['Id' => $answerData['Id'] ?? null],
-
-    
-
-                                    [
-
-    
-
-                                        'QuestionId' => $question->Id,
-
-    
-
-                                        'AnswerText' => $answerData['AnswerText'],
-
-    
-
-                                        'IsCorrect' => $answerData['IsCorrect'],
-
-    
-
-                                    ]
-
-    
-
-                                );
-
-    
-
-                            }
-
-    
 
                         }
 
-    
 
-                    });
 
-    
+                    }
 
-            
 
-    
 
-                    return response()->json(['message' => 'Quiz saved successfully.']);
+                    $imagePath = null;
 
-    
+
 
                 }
+
+
+
+
+
+
+
+                $question = Question::updateOrCreate(
+
+
+
+                    ['Id' => $questionData['Id'] ?? null],
+
+
+
+                    [
+
+
+
+                        'QuizId' => $quiz->Id,
+
+
+
+                        'QuestionText' => $questionData['QuestionText'],
+
+
+
+                        'QuestionType' => $questionData['QuestionType'],
+
+
+
+                        'Order' => $questionData['Order'],
+
+
+
+                        'ImagePath' => $imagePath,
+
+
+
+                    ]
+
+
+
+                );
+
+
+
+
+
+
+
+                foreach ($questionData['Answers'] as $answerData) {
+
+
+
+                    AnswerOption::updateOrCreate(
+
+
+
+                        ['Id' => $answerData['Id'] ?? null],
+
+
+
+                        [
+
+
+
+                            'QuestionId' => $question->Id,
+
+
+
+                            'AnswerText' => $answerData['AnswerText'],
+
+
+
+                            'IsCorrect' => $answerData['IsCorrect'],
+
+
+
+                        ]
+
+
+
+                    );
+
+
+
+                }
+
+
+
+            }
+
+
+
+        });
+
+
+
+
+
+
+
+        return response()->json(['message' => 'Quiz saved successfully.']);
+
+
+
+    }
 
     public function submit(Request $request, $id)
     {
         $user = Auth::user();
         $quiz = Quiz::with('questions.answerOptions')->findOrFail($id);
-        $answers = $request->input('answers'); // e.g., ['1' => 3, '2' => 5]
+        $submission = $request->input('answers'); // e.g., ['1' => [3, 4], '2' => 5]
 
-        $correctAnswers = 0;
+        $totalScoreAccumulator = 0;
         $totalQuestions = $quiz->questions->count();
 
         foreach ($quiz->questions as $question) {
-            if (isset($answers[$question->Id])) {
-                $answerId = $answers[$question->Id];
-                $correctOption = $question->answerOptions->firstWhere('IsCorrect', true);
-                if ($correctOption && $correctOption->Id == $answerId) {
-                    $correctAnswers++;
-                }
+            // Get correct option IDs for this question
+            $correctOptionIds = $question->answerOptions
+                ->where('IsCorrect', true)
+                ->pluck('Id')
+                ->toArray();
+
+            $totalCorrectOptions = count($correctOptionIds);
+
+            // Get user's submitted answer IDs for this question
+            $userAnswerInput = $submission[$question->Id] ?? [];
+
+            // Normalize to array (handle single scalar input)
+            if (!is_array($userAnswerInput)) {
+                $userAnswerInput = [$userAnswerInput];
             }
+            // Filter out null/empty values
+            $userAnswerIds = array_filter($userAnswerInput);
+
+            $questionScore = 0;
+
+            if ($totalCorrectOptions > 0) {
+                // Calculate correct and wrong selections
+                $submittedCorrect = 0;
+                $submittedWrong = 0;
+
+                foreach ($userAnswerIds as $ansId) {
+                    if (in_array($ansId, $correctOptionIds)) {
+                        $submittedCorrect++;
+                    } else {
+                        $submittedWrong++;
+                    }
+                }
+
+                // Value of one correct option
+                $pointsPerCorrectInfo = 1 / $totalCorrectOptions;
+
+                // Formula: (Correct * Value) - (Wrong * Value)
+                // This effectively creates a penalty equal to the value of a correct answer
+                $rawScore = ($submittedCorrect * $pointsPerCorrectInfo) - ($submittedWrong * $pointsPerCorrectInfo);
+
+                // detailed check: Ensure score is not negative and not > 1 (though logic shouldn't allow > 1 unless duplicates)
+                $questionScore = max(0, min(1, $rawScore));
+            } else {
+                // Determine logic for questions with no "correct" options (e.g. surveys or text) - assuming correct if answered? 
+                // For now, if no correct options defined in DB, award 0 or handle as non-graded.
+                // Assuming 0 to be safe.
+                $questionScore = 0;
+            }
+
+            $totalScoreAccumulator += $questionScore;
         }
 
-        $score = ($totalQuestions > 0) ? ($correctAnswers / $totalQuestions) * 100 : 0;
+        // Final Score Percentage
+        $finalScore = ($totalQuestions > 0) ? ($totalScoreAccumulator / $totalQuestions) * 100 : 0;
 
-        $attempt = DB::transaction(function () use ($quiz, $user, $score, $answers) {
+        $attempt = DB::transaction(function () use ($quiz, $user, $finalScore, $submission) {
             $attempt = QuizAttempt::create([
                 'QuizId' => $quiz->Id,
                 'UserId' => $user->Id,
-                'Score' => $score,
+                'Score' => $finalScore,
                 'AttemptDate' => now(),
             ]);
 
-            foreach ($answers as $questionId => $answerId) {
-                QuizAttemptAnswer::create([
-                    'AttemptId' => $attempt->Id,
-                    'QuestionId' => $questionId,
-                    'AnswerId' => $answerId,
-                ]);
+            // Save individual answers
+            foreach ($submission as $questionId => $userAnswerInput) {
+                // Normalize for storage
+                if (!is_array($userAnswerInput)) {
+                    $userAnswerInput = [$userAnswerInput];
+                }
+
+                foreach ($userAnswerInput as $answerId) {
+                    if ($answerId) { // Ensure not null/empty
+                        QuizAttemptAnswer::create([
+                            'AttemptId' => $attempt->Id,
+                            'QuestionId' => $questionId,
+                            'AnswerId' => $answerId,
+                            // Note: 'TextAnswer' populated if free text logic added later
+                        ]);
+                    }
+                }
             }
-            
+
             return $attempt;
         });
 
         return response()->json([
             'message' => 'Quiz submitted successfully.',
             'attemptId' => $attempt->Id,
-            'score' => $score,
+            'score' => $finalScore,
         ]);
     }
 }

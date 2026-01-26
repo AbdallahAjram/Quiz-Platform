@@ -51,9 +51,9 @@ class QuizAttemptController extends Controller
 
         $quizId = $validatedData['QuizId'];
         $userAnswers = $validatedData['Answers'];
+        $user = $request->user();
 
         $quiz = \App\Models\Quiz::with('questions.answerOptions')->findOrFail($quizId);
-        $user = $request->user();
 
         // A final exam is a quiz with no LessonId. Prevent retakes if already passed.
         if ($quiz->LessonId === null) {
@@ -67,31 +67,69 @@ class QuizAttemptController extends Controller
             }
         }
 
-        $correctCount = 0;
-        foreach ($userAnswers as $userAnswer) {
-            $questionId = $userAnswer['QuestionId'];
-            $question = $quiz->questions->find($questionId);
+        $totalScoreAccumulator = 0;
+        $totalQuestions = $quiz->questions->count();
 
-            if (!$question) continue;
+        // Index user answers by QuestionId for faster lookup
+        $userAnswersByQ = collect($userAnswers)->keyBy('QuestionId');
 
-            $correctOptionIds = $question->answerOptions->where('IsCorrect', true)->pluck('Id')->sort()->values();
+        foreach ($quiz->questions as $question) {
+            $correctOptionIds = $question->answerOptions
+                ->where('IsCorrect', true)
+                ->pluck('Id')
+                ->map(fn($id) => (int) $id)
+                ->toArray();
 
-            if ($question->QuestionType === 'MCQ' || $question->QuestionType === 'TF') {
-                $selectedOptionId = $userAnswer['SelectedOptionId'] ?? null;
-                if ($selectedOptionId && $correctOptionIds->count() === 1 && $correctOptionIds[0] == $selectedOptionId) {
-                    $correctCount++;
-                }
-            } elseif ($question->QuestionType === 'MSQ') {
-                $selectedOptionIds = collect($userAnswer['SelectedOptionIds'] ?? [])->map(fn($id) => (int)$id)->sort()->values();
-                if ($correctOptionIds->all() === $selectedOptionIds->all()) {
-                    $correctCount++;
+            $totalCorrectOptions = count($correctOptionIds);
+
+            // Get user submission for this question
+            $userInput = $userAnswersByQ->get($question->Id);
+            $userSelectedIds = [];
+
+            if ($userInput) {
+                if (!empty($userInput['SelectedOptionId'])) {
+                    $userSelectedIds[] = (int) $userInput['SelectedOptionId'];
+                } elseif (!empty($userInput['SelectedOptionIds'])) {
+                    $userSelectedIds = array_map('intval', $userInput['SelectedOptionIds']);
                 }
             }
+            // Remove duplicates/empty
+            $userSelectedIds = array_unique(array_filter($userSelectedIds));
+
+            $questionScore = 0;
+
+            // Logic: Proportional Scoring with Penalty
+            if ($totalCorrectOptions > 0) {
+                $submittedCorrect = 0;
+                $submittedWrong = 0;
+
+                foreach ($userSelectedIds as $sid) {
+                    if (in_array($sid, $correctOptionIds, true)) {
+                        $submittedCorrect++;
+                    } else {
+                        $submittedWrong++;
+                    }
+                }
+
+                $valuePerCorrect = 1 / $totalCorrectOptions;
+                // Score = (Correct - Wrong) * Value
+                $rawScore = ($submittedCorrect - $submittedWrong) * $valuePerCorrect;
+
+                $questionScore = max(0, min(1, $rawScore));
+            } else {
+                // No correct options defined; assume 0
+                $questionScore = 0;
+            }
+
+            $totalScoreAccumulator += $questionScore;
         }
 
-        $totalQuestions = count($quiz->questions);
-        $score = ($totalQuestions > 0) ? ($correctCount / $totalQuestions) * 100 : 0;
+        $score = ($totalQuestions > 0) ? ($totalScoreAccumulator / $totalQuestions) * 100 : 0;
+        // Check passing score
         $isPassed = $score >= $quiz->PassingScore;
+
+        // Cast to integer for DB storage
+        $score = (int) round($score);
 
         try {
             $attempt = null;
@@ -105,28 +143,39 @@ class QuizAttemptController extends Controller
                 ]);
 
                 $attemptAnswers = [];
+                $timestamp = now();
+
                 foreach ($userAnswers as $userAnswer) {
-                    if (!empty($userAnswer['SelectedOptionId'])) { // MCQ/TF
-                        $attemptAnswers[] = [
-                            'AttemptId' => $attempt->Id,
-                            'QuestionId' => $userAnswer['QuestionId'],
-                            'AnswerId' => $userAnswer['SelectedOptionId'],
-                            'CreatedAt' => now(),
-                            'UpdatedAt' => now(),
-                        ];
-                    } elseif (!empty($userAnswer['SelectedOptionIds'])) { // MSQ
-                        foreach ($userAnswer['SelectedOptionIds'] as $selectedId) {
-                            $attemptAnswers[] = [
-                                'AttemptId' => $attempt->Id,
-                                'QuestionId' => $userAnswer['QuestionId'],
-                                'AnswerId' => $selectedId,
-                                'CreatedAt' => now(),
-                                'UpdatedAt' => now(),
-                            ];
+                    $qid = $userAnswer['QuestionId'];
+
+                    // Collect all IDs from both single and array input fields
+                    $idsToSave = [];
+                    if (!empty($userAnswer['SelectedOptionId'])) {
+                        $idsToSave[] = $userAnswer['SelectedOptionId'];
+                    }
+                    if (!empty($userAnswer['SelectedOptionIds'])) {
+                        foreach ($userAnswer['SelectedOptionIds'] as $sid) {
+                            $idsToSave[] = $sid;
                         }
                     }
+
+                    // Deduplicate
+                    $idsToSave = array_unique($idsToSave);
+
+                    foreach ($idsToSave as $ansId) {
+                        $attemptAnswers[] = [
+                            'AttemptId' => $attempt->Id,
+                            'QuestionId' => $qid,
+                            'AnswerId' => $ansId,
+                            'CreatedAt' => $timestamp,
+                            'UpdatedAt' => $timestamp,
+                        ];
+                    }
                 }
-                \App\Models\QuizAttemptAnswer::insert($attemptAnswers);
+
+                if (!empty($attemptAnswers)) {
+                    \App\Models\QuizAttemptAnswer::insert($attemptAnswers);
+                }
 
                 if ($isPassed && $quiz->LessonId) {
                     LessonCompletion::firstOrCreate([
@@ -148,7 +197,7 @@ class QuizAttemptController extends Controller
 
         } catch (\Exception $e) {
             Log::error('Quiz submission failed: ' . $e->getMessage(), ['trace' => $e->getTraceAsString()]);
-            return response()->json(['message' => 'An error occurred during quiz submission.'], 500);
+            return response()->json(['message' => 'An error occurred during quiz submission. ' . $e->getMessage()], 500); // Added exception message for debugging
         }
     }
 
@@ -190,7 +239,7 @@ class QuizAttemptController extends Controller
                 return response()->json(['message' => 'This action is unauthorized.'], 403);
             }
         }
-        
+
         $questions = $attempt->quiz->questions->map(function ($question) use ($attempt) {
             $userAnswer = $attempt->answers->firstWhere('QuestionId', $question->Id);
             $correctAnswer = $question->answerOptions->firstWhere('IsCorrect', true);
@@ -269,145 +318,145 @@ class QuizAttemptController extends Controller
     }
 
     public function submit(Request $request, string $id)
-{
-    $attempt = \App\Models\QuizAttempt::with([
-        'quiz',
-        'quiz.questions.answerOptions',
-        'answers',
-    ])->find($id);
+    {
+        $attempt = \App\Models\QuizAttempt::with([
+            'quiz',
+            'quiz.questions.answerOptions',
+            'answers',
+        ])->find($id);
 
-    if (!$attempt) {
-        return response()->json(['message' => 'Quiz attempt not found.'], 404);
-    }
+        if (!$attempt) {
+            return response()->json(['message' => 'Quiz attempt not found.'], 404);
+        }
 
-    if ((int) $attempt->UserId !== (int) auth()->id()) {
-        return response()->json(['message' => 'Forbidden.'], 403);
-    }
+        if ((int) $attempt->UserId !== (int) auth()->id()) {
+            return response()->json(['message' => 'Forbidden.'], 403);
+        }
 
-    $data = $request->validate([
-        // Optional: store duration at submit time
-        'Duration' => ['nullable', 'integer', 'min:0'],
-    ]);
+        $data = $request->validate([
+            // Optional: store duration at submit time
+            'Duration' => ['nullable', 'integer', 'min:0'],
+        ]);
 
-    // Group submitted answers by QuestionId
-    $submittedByQuestion = [];
-    foreach ($attempt->answers as $ans) {
-        $qid = (int) $ans->QuestionId;
-        if (!isset($submittedByQuestion[$qid])) {
-            $submittedByQuestion[$qid] = [
-                'answerIds' => [],
-                'textAnswers' => [],
+        // Group submitted answers by QuestionId
+        $submittedByQuestion = [];
+        foreach ($attempt->answers as $ans) {
+            $qid = (int) $ans->QuestionId;
+            if (!isset($submittedByQuestion[$qid])) {
+                $submittedByQuestion[$qid] = [
+                    'answerIds' => [],
+                    'textAnswers' => [],
+                ];
+            }
+            if (!is_null($ans->AnswerId)) {
+                $submittedByQuestion[$qid]['answerIds'][] = (int) $ans->AnswerId;
+            }
+            if (!is_null($ans->TextAnswer)) {
+                $submittedByQuestion[$qid]['textAnswers'][] = (string) $ans->TextAnswer;
+            }
+        }
+
+        $results = [];
+        $gradedCount = 0;
+        $correctCount = 0;
+        $totalQuestions = $attempt->quiz->questions->count();
+
+        foreach ($attempt->quiz->questions as $q) {
+            $qid = (int) $q->Id;
+            $type = (string) $q->QuestionType;
+
+            $correctOptionIds = $q->answerOptions
+                ->where('IsCorrect', true)
+                ->pluck('Id')
+                ->map(fn($v) => (int) $v)
+                ->values()
+                ->all();
+
+            $submitted = $submittedByQuestion[$qid] ?? ['answerIds' => [], 'textAnswers' => []];
+            $submittedIds = array_values(array_unique($submitted['answerIds']));
+
+            // Default: not graded
+            $isGraded = false;
+            $isCorrect = false;
+            $reason = null;
+
+            if ($type === 'single') {
+                $isGraded = true;
+                $gradedCount++;
+
+                // Single expects exactly 1 selected and exactly 1 correct
+                $expected = count($correctOptionIds) === 1 ? $correctOptionIds[0] : null;
+                $picked = count($submittedIds) === 1 ? $submittedIds[0] : null;
+
+                $isCorrect = (!is_null($expected) && !is_null($picked) && $picked === $expected);
+
+                if ($expected === null) {
+                    $reason = 'No single correct option defined for this question.';
+                } elseif ($picked === null) {
+                    $reason = 'No answer selected.';
+                }
+            } elseif ($type === 'multiple') {
+                $isGraded = true;
+                $gradedCount++;
+
+                sort($correctOptionIds);
+                sort($submittedIds);
+
+                $isCorrect = ($submittedIds === $correctOptionIds);
+
+                if (empty($submittedIds)) {
+                    $reason = 'No answers selected.';
+                }
+            } else {
+                // text or unknown types: not auto-gradable with current schema
+                $reason = 'Not auto-gradable (text/manual grading required).';
+            }
+
+            if ($isGraded && $isCorrect) {
+                $correctCount++;
+            }
+
+            $results[] = [
+                'QuestionId' => $qid,
+                'QuestionType' => $type,
+                'IsGraded' => $isGraded,
+                'IsCorrect' => $isCorrect,
+                'CorrectOptionIds' => $correctOptionIds,
+                'SubmittedAnswerIds' => $submittedIds,
+                'Note' => $reason,
             ];
         }
-        if (!is_null($ans->AnswerId)) {
-            $submittedByQuestion[$qid]['answerIds'][] = (int) $ans->AnswerId;
-        }
-        if (!is_null($ans->TextAnswer)) {
-            $submittedByQuestion[$qid]['textAnswers'][] = (string) $ans->TextAnswer;
-        }
-    }
 
-    $results = [];
-    $gradedCount = 0;
-    $correctCount = 0;
-    $totalQuestions = $attempt->quiz->questions->count();
-
-    foreach ($attempt->quiz->questions as $q) {
-        $qid = (int) $q->Id;
-        $type = (string) $q->QuestionType;
-
-        $correctOptionIds = $q->answerOptions
-            ->where('IsCorrect', true)
-            ->pluck('Id')
-            ->map(fn ($v) => (int) $v)
-            ->values()
-            ->all();
-
-        $submitted = $submittedByQuestion[$qid] ?? ['answerIds' => [], 'textAnswers' => []];
-        $submittedIds = array_values(array_unique($submitted['answerIds']));
-
-        // Default: not graded
-        $isGraded = false;
-        $isCorrect = false;
-        $reason = null;
-
-        if ($type === 'single') {
-            $isGraded = true;
-            $gradedCount++;
-
-            // Single expects exactly 1 selected and exactly 1 correct
-            $expected = count($correctOptionIds) === 1 ? $correctOptionIds[0] : null;
-            $picked = count($submittedIds) === 1 ? $submittedIds[0] : null;
-
-            $isCorrect = (!is_null($expected) && !is_null($picked) && $picked === $expected);
-
-            if ($expected === null) {
-                $reason = 'No single correct option defined for this question.';
-            } elseif ($picked === null) {
-                $reason = 'No answer selected.';
-            }
-        } elseif ($type === 'multiple') {
-            $isGraded = true;
-            $gradedCount++;
-
-            sort($correctOptionIds);
-            sort($submittedIds);
-
-            $isCorrect = ($submittedIds === $correctOptionIds);
-
-            if (empty($submittedIds)) {
-                $reason = 'No answers selected.';
-            }
-        } else {
-            // text or unknown types: not auto-gradable with current schema
-            $reason = 'Not auto-gradable (text/manual grading required).';
+        // Score is percentage over graded questions only
+        $score = 0;
+        if ($gradedCount > 0) {
+            $score = (int) round(($correctCount / $gradedCount) * 100);
         }
 
-        if ($isGraded && $isCorrect) {
-            $correctCount++;
+        $passed = $attempt->quiz && $score >= (int) $attempt->quiz->PassingScore;
+
+        $attempt->Score = $score;
+        $attempt->IsPassed = $passed;
+        if (isset($data['Duration'])) {
+            $attempt->Duration = (int) $data['Duration'];
         }
+        $attempt->save();
 
-        $results[] = [
-            'QuestionId' => $qid,
-            'QuestionType' => $type,
-            'IsGraded' => $isGraded,
-            'IsCorrect' => $isCorrect,
-            'CorrectOptionIds' => $correctOptionIds,
-            'SubmittedAnswerIds' => $submittedIds,
-            'Note' => $reason,
-        ];
+        return response()->json([
+            'message' => 'Attempt submitted and graded successfully.',
+            'data' => [
+                'AttemptId' => (int) $attempt->Id,
+                'QuizId' => (int) $attempt->QuizId,
+                'TotalQuestions' => $totalQuestions,
+                'GradedQuestions' => $gradedCount,
+                'CorrectGradedAnswers' => $correctCount,
+                'Score' => $score,
+                'PassingScore' => (int) $attempt->quiz->PassingScore,
+                'IsPassed' => (bool) $passed,
+                'Duration' => $attempt->Duration,
+                'PerQuestion' => $results,
+            ],
+        ]);
     }
-
-    // Score is percentage over graded questions only
-    $score = 0;
-    if ($gradedCount > 0) {
-        $score = (int) round(($correctCount / $gradedCount) * 100);
-    }
-
-    $passed = $attempt->quiz && $score >= (int) $attempt->quiz->PassingScore;
-
-    $attempt->Score = $score;
-    $attempt->IsPassed = $passed;
-    if (isset($data['Duration'])) {
-        $attempt->Duration = (int) $data['Duration'];
-    }
-    $attempt->save();
-
-    return response()->json([
-        'message' => 'Attempt submitted and graded successfully.',
-        'data' => [
-            'AttemptId' => (int) $attempt->Id,
-            'QuizId' => (int) $attempt->QuizId,
-            'TotalQuestions' => $totalQuestions,
-            'GradedQuestions' => $gradedCount,
-            'CorrectGradedAnswers' => $correctCount,
-            'Score' => $score,
-            'PassingScore' => (int) $attempt->quiz->PassingScore,
-            'IsPassed' => (bool) $passed,
-            'Duration' => $attempt->Duration,
-            'PerQuestion' => $results,
-        ],
-    ]);
-}
 
 }

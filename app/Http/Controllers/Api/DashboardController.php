@@ -9,6 +9,7 @@ use App\Models\Course;
 use App\Models\User;
 use App\Models\Lesson;
 use App\Models\Enrollment;
+use App\Models\LessonCompletion;
 use App\Models\QuizAttempt;
 
 class DashboardController extends Controller
@@ -29,18 +30,37 @@ class DashboardController extends Controller
 
             $totalCourses = $courseIds->count();
             $totalLessons = Lesson::whereIn('CourseId', $courseIds)->count();
-            $totalStudents = Enrollment::whereHas('course', function($q) use ($user) {
+            $totalStudents = Enrollment::whereHas('course', function ($q) use ($user) {
                 $q->where('CreatedBy', $user->Id);
             })->distinct('UserId')->count();
             $averageScore = QuizAttempt::whereHas('quiz', function ($q) use ($courseIds) {
                 $q->whereIn('CourseId', $courseIds);
             })->avg('Score');
-            
+
             $recentActivity = Enrollment::with(['User:Id,Name', 'Course:Id,Title'])
                 ->whereIn('CourseId', $courseIds)
                 ->latest('EnrolledAt')
                 ->take(5)
                 ->get();
+        } elseif ($user->Role === 'Student') {
+            $totalCourses = Enrollment::where('UserId', $user->Id)->count();
+            $totalLessons = LessonCompletion::where('UserId', $user->Id)->count();
+
+            // Average Score: Highest score per quiz
+            $quizAttempts = QuizAttempt::where('UserId', $user->Id)
+                ->get()
+                ->groupBy('QuizId');
+
+            if ($quizAttempts->isNotEmpty()) {
+                $averageScore = $quizAttempts->map(function ($attempts) {
+                    return $attempts->max('Score');
+                })->avg();
+            } else {
+                $averageScore = null;
+            }
+            // Irrelevant for student
+            $totalStudents = 0;
+            $recentActivity = [];
         } else { // Admin
             $totalCourses = Course::count();
             $totalLessons = Lesson::count();
@@ -56,7 +76,7 @@ class DashboardController extends Controller
             'TotalCourses' => $totalCourses,
             'TotalStudents' => $totalStudents,
             'TotalLessons' => $totalLessons,
-            'AverageScore' => $averageScore ?? 0,
+            'AverageScore' => $averageScore,
             'RecentActivity' => $recentActivity,
         ]);
     }
