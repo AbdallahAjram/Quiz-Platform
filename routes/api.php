@@ -82,6 +82,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('enrollments/my-courses', [EnrollmentController::class, 'myCourses']);
     Route::apiResource('enrollments', EnrollmentController::class);
     Route::apiResource('lessons', LessonController::class)->only(['index', 'show']);
+    Route::get('lessons/{id}/download', [LessonController::class, 'download']);
     Route::apiResource('lesson-completions', LessonCompletionController::class);
     Route::apiResource('announcements', AnnouncementController::class);
     Route::apiResource('comments', CommentController::class);

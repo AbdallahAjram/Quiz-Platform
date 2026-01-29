@@ -139,24 +139,30 @@ const LessonViewer = () => {
         }
     };
 
-    const handleDownload = async (url: string) => {
+    const handleDownload = async (lessonId: number, lessonTitle: string) => {
         try {
-            const response = await fetch(url);
-            const blob = await response.blob();
-            const blobUrl = window.URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = blobUrl;
-            
-            const urlPath = new URL(url).pathname;
-            const decodedPath = decodeURIComponent(urlPath);
-            const filename = decodedPath.substring(decodedPath.lastIndexOf('/') + 1);
-            const finalFilename = filename.split('?')[0].split('/').pop() || 'download';
-            
-            a.download = finalFilename;
-            document.body.appendChild(a);
-            a.click();
-            window.URL.revokeObjectURL(blobUrl);
-            a.remove();
+            const response = await axios.get(`http://127.0.0.1:8000/api/lessons/${lessonId}/download`, {
+                responseType: 'blob',
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+
+            // Try to extract filename from Content-Disposition header
+            let filename = `${lessonTitle}.pdf`; // Default fallback
+            const contentDisposition = response.headers['content-disposition'];
+            if (contentDisposition) {
+                const filenameMatch = contentDisposition.match(/filename="?([^"]+)"?/);
+                if (filenameMatch.length === 2)
+                    filename = filenameMatch[1];
+            }
+
+            const url = window.URL.createObjectURL(new Blob([response.data]));
+            const link = document.createElement('a');
+            link.href = url;
+            link.setAttribute('download', filename); // Set the clean filename
+            document.body.appendChild(link);
+            link.click();
+            link.parentNode?.removeChild(link);
+            window.URL.revokeObjectURL(url);
         } catch (error) {
             console.error('Download failed:', error);
             setToast({ message: 'Failed to download resource.', type: 'error' });
@@ -285,7 +291,7 @@ const LessonViewer = () => {
                         {currentLesson.AttachmentUrl && (
                             <div className="mt-8">
                                 <button
-                                    onClick={() => handleDownload(currentLesson.AttachmentUrl!)}
+                                    onClick={() => handleDownload(currentLesson.Id, currentLesson.Title)}
                                     className="inline-block px-6 py-2 font-semibold text-white bg-gray-600 rounded-lg hover:bg-gray-700"
                                 >
                                     Download Resource
